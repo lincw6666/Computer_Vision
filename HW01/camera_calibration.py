@@ -124,8 +124,7 @@ for i in range(len(H)):
 V = np.array(V)
 
 _ , s , Vt = np.linalg.svd(V)
-V = Vt.T
-b = V[:, -1]
+b = Vt[-1]
 
 oy = (b[1] * b[3] - b[0] * b[4]) / (b[0] * b[2] - b[1]**2)
 l = b[5] - ((b[3]**2 + oy * (b[1] * b[2] - b[0] * b[4])) / b[0])
