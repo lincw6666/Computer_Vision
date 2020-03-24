@@ -41,7 +41,9 @@ for idx, fname in enumerate(images):
         cv2.drawChessboardCorners(img, (corner_x,corner_y), corners, ret)
         plt.imshow(img)
 
-
+imgpoints = np.load('imgpoints.npy')
+#np.save('objpoints.npy', np.array(objpoints))
+objpoints = np.load('objpoints.npy')
 #######################################################################################################
 #                                Homework 1 Camera Calibration                                        #
 #               You need to implement camera calibration(02-camera p.76-80) here.                     #
@@ -53,112 +55,22 @@ for idx, fname in enumerate(images):
 #######################################################################################################
 print('Camera calibration...')
 img_size = (img.shape[1], img.shape[0])
+print(objpoints,imgpoints)
 # You need to comment these functions and write your calibration function from scratch.
 # Notice that rvecs is rotation vector, not the rotation matrix, and tvecs is translation vector.
 # In practice, you'll derive extrinsics matrixes directly. The shape must be [pts_num,3,4], and use them to plot.
-"""
+
 ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, img_size,None,None)
 Vr = np.array(rvecs)
 Tr = np.array(tvecs)
 extrinsics = np.concatenate((Vr, Tr), axis=1).reshape(-1,6)
-"""
+print(extrinsics.shape)
 """
 Write your code here
 """
 # Find Homography.
 #
 # @H: A list contains the homography of each image to the chessboard.
-H = []
-
-# It takes a lot of time finding corner in the images. I saved the results to files
-# you can simply skip finding corner and use the data in the files directly.
-#np.save('imgpoints.npy', np.array(imgpoints))
-imgpoints = np.load('imgpoints.npy')
-#np.save('objpoints.npy', np.array(objpoints))
-objpoints = np.load('objpoints.npy')
-
-for p_imgs, p_objs in zip(imgpoints, objpoints):
-    assert p_imgs.shape[0] == p_objs.shape[0], "Number of corner in the image"\
-        "should match those on the real world chessboard."
-    
-    # Build the "P" matrix in the homogeneous equation in 02-camera p.73
-    #
-    # @P: The "P" matrix.
-    P = np.zeros((len(p_imgs)<<1, 9))
-    p_objs[:, 2] = 1
-    P[::2, :3] = p_objs
-    P[1::2, 3:6] = p_objs
-    P[::2, 6:] = -p_objs * p_imgs[:, 0, 0, None]
-    P[1::2, 6:] = -p_objs * p_imgs[:, 0, 1, None]
-
-    # The homography @H[i] is the last column of the right singular matrix "V" of P.
-    # Please remind that we get the tranpose of "V" through np.linalg.svd. Thus,
-    # @H[i] is the last **row** of "V".
-    _, _, vh = np.linalg.svd(P, full_matrices=False)
-    H.append(vh[-1].reshape((3, 3)))
-
-    # Verify whether we get the correct homography.
-    """
-    print('\n**********************************************')
-    for p_img, p_obj in zip(p_imgs[:, 0, :], p_objs):
-       get_point = H[-1].dot(p_obj)
-       get_point = get_point[:2] / get_point[2]
-       print(p_img, get_point)
-    """
-    
-    
-# Find intrinsic matrix K
-    
-def buildv(H, i, j):
-	v = [H[0][i-1] * H[0][j-1] , 
-	  H[0][i-1] * H[1][j-1] + H[1][i-1] * H[0][j-1] , 
-	  H[1][i-1] * H[1][j-1] ,
-	  H[2][i-1] * H[0][j-1] + H[0][i-1] * H[2][j-1] , 
-	  H[2][i-1] * H[1][j-1] + H[1][i-1] * H[2][j-1] , 
-	  H[2][i-1] * H[2][j-1]]
-	return np.array(v)
-V = []
-for i in range(len(H)):
-	V.append(buildv(H[i] , 1 , 2))
-	V.append(buildv(H[i] , 1 , 1) - buildv(H[i] , 2 , 2))
-V = np.array(V)
-
-_ , s , Vt = np.linalg.svd(V)
-b = Vt[-1]
-
-oy = (b[1] * b[3] - b[0] * b[4]) / (b[0] * b[2] - b[1]**2)
-l = b[5] - ((b[3]**2 + oy * (b[1] * b[2] - b[0] * b[4])) / b[0])
-alpha = np.sqrt((l / b[0]))
-beta = np.sqrt(((l * b[0]) / (b[0] * b[2] - b[1]**2)))
-gamma = -1 * ((b[1]) * (alpha**2) * (beta/l))
-ox = (gamma * oy/beta) - (b[3] * (alpha**2)/l)
-
-K = [[alpha , 0 , ox] , [0 , beta , oy] , [0 , 0 , 1]]
-K = np.array(K)
-    
-    
-# get extrinsic matrix [R|t] for each images by K and H 
-
-extrinsics = np.array([], dtype=np.float32).reshape(3,0)
-K_inverse = np.linalg.inv(K)
-
-for h in H:
-    h1,h2,h3 = [h[:,e] for e in range(3)]
-    lambda_ = 1/(np.linalg.norm(K_inverse.dot(h1)))
-
-    r1 = lambda_ * K_inverse.dot(h1)
-    r2 = lambda_ * K_inverse.dot(h2)
-    r3 = np.cross(r1,r2)
-    t = lambda_ * K_inverse.dot(h3)
-
-    R = np.hstack((r1.reshape(3,1),r2.reshape(3,1),r3.reshape(3,1)))
-
-    extrinsics = np.hstack((extrinsics,R))
-    extrinsics = np.hstack((extrinsics,t.reshape(3,1)))
-    print(extrinsics.shape)
-
-print(extrinsics.shape)
-extrinsics = extrinsics.reshape(-1,3,4)
 
 
 import sys
@@ -172,7 +84,7 @@ print('Show the camera extrinsics')
 fig = plt.figure(figsize=(10, 10))
 ax = fig.gca(projection='3d')
 # camera setting
-camera_matrix = K#mtx
+camera_matrix = mtx
 cam_width = 0.064/0.1
 cam_height = 0.032/0.1
 scale_focal = 1600
@@ -180,6 +92,7 @@ scale_focal = 1600
 board_width = 8
 board_height = 6
 square_size = 1
+print(ax, camera_matrix, cam_width, cam_height,scale_focal, extrinsics, board_width,board_height, square_size)
 # display
 # True -> fix board, moving cameras
 # False -> fix camera, moving boards
