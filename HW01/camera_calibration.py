@@ -77,7 +77,7 @@ imgpoints = np.load('imgpoints.npy')
 #np.save('objpoints.npy', np.array(objpoints))
 objpoints = np.load('objpoints.npy')
 
-
+ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, img_size,None,None)
 for p_imgs, p_objs in zip(imgpoints, objpoints):
     assert p_imgs.shape[0] == p_objs.shape[0], "Number of corner in the image"\
         "should match those on the real world chessboard."
@@ -133,8 +133,6 @@ B = np.array([[b[0], b[1], b[3]],
 K = np.linalg.cholesky(B)
 K = np.linalg.inv(K)
 K = K.T
-    
-    
 # get extrinsic matrix [R|t] for each images by K and H 
 
 extrinsics = np.array([], dtype=np.float32).reshape(3,0)
@@ -142,21 +140,19 @@ K_inverse = np.linalg.inv(K)
 
 for h in H:
     h1,h2,h3 = [h[:,e] for e in range(3)]
-    lambda_ = 1/(np.linalg.norm(K_inverse.dot(h1)))
+    lambda_ = 1.0/(np.linalg.norm(K_inverse.dot(h1)))
 
     r1 = lambda_ * K_inverse.dot(h1)
     r2 = lambda_ * K_inverse.dot(h2)
     r3 = np.cross(r1,r2)
     t = lambda_ * K_inverse.dot(h3)
 
-    R = np.hstack((r1.reshape(3,1),r2.reshape(3,1),r3.reshape(3,1)))
-
+    R = np.hstack((r1.reshape(3,1),r2.reshape(3,1),r3.reshape(3,1))).reshape(3,3)
     extrinsics = np.hstack((extrinsics,R))
     extrinsics = np.hstack((extrinsics,t.reshape(3,1)))
-    print(extrinsics.shape)
 
-print(extrinsics.shape)
-extrinsics = extrinsics.reshape(-1,3,4)
+
+extrinsics = np.array(np.hsplit(extrinsics,len(H)))
 
 
 
