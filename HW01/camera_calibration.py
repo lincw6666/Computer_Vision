@@ -77,6 +77,7 @@ imgpoints = np.load('imgpoints.npy')
 #np.save('objpoints.npy', np.array(objpoints))
 objpoints = np.load('objpoints.npy')
 
+
 for p_imgs, p_objs in zip(imgpoints, objpoints):
     assert p_imgs.shape[0] == p_objs.shape[0], "Number of corner in the image"\
         "should match those on the real world chessboard."
@@ -105,36 +106,33 @@ for p_imgs, p_objs in zip(imgpoints, objpoints):
        get_point = get_point[:2] / get_point[2]
        print(p_img, get_point)
     """
-    
+   
     
 # Find intrinsic matrix K
     
 def buildv(H, i, j):
-	v = [H[0][i-1] * H[0][j-1] , 
-	  H[0][i-1] * H[1][j-1] + H[1][i-1] * H[0][j-1] , 
-	  H[1][i-1] * H[1][j-1] ,
-	  H[2][i-1] * H[0][j-1] + H[0][i-1] * H[2][j-1] , 
-	  H[2][i-1] * H[1][j-1] + H[1][i-1] * H[2][j-1] , 
-	  H[2][i-1] * H[2][j-1]]
-	return np.array(v)
+    v = [H[0][i-1] * H[0][j-1], 
+         H[0][i-1] * H[1][j-1] + H[1][i-1] * H[0][j-1], 
+         H[1][i-1] * H[1][j-1],
+         H[2][i-1] * H[0][j-1] + H[0][i-1] * H[2][j-1], 
+         H[2][i-1] * H[1][j-1] + H[1][i-1] * H[2][j-1], 
+         H[2][i-1] * H[2][j-1]]
+    return np.array(v)
+
 V = []
 for i in range(len(H)):
-	V.append(buildv(H[i] , 1 , 2))
-	V.append(buildv(H[i] , 1 , 1) - buildv(H[i] , 2 , 2))
+    V.append(buildv(H[i], 1, 2))
+    V.append(buildv(H[i], 1, 1) - buildv(H[i], 2, 2))
 V = np.array(V)
 
-_ , s , Vt = np.linalg.svd(V)
-b = Vt[-1]
-
-oy = (b[1] * b[3] - b[0] * b[4]) / (b[0] * b[2] - b[1]**2)
-l = b[5] - ((b[3]**2 + oy * (b[1] * b[2] - b[0] * b[4])) / b[0])
-alpha = np.sqrt((l / b[0]))
-beta = np.sqrt(((l * b[0]) / (b[0] * b[2] - b[1]**2)))
-gamma = -1 * ((b[1]) * (alpha**2) * (beta/l))
-ox = (gamma * oy/beta) - (b[3] * (alpha**2)/l)
-
-K = [[alpha , 0 , ox] , [0 , beta , oy] , [0 , 0 , 1]]
-K = np.array(K)
+_, _, vh = np.linalg.svd(V)
+b = vh[-1]
+B = np.array([[b[0], b[1], b[3]],
+              [b[1], b[2], b[4]],
+              [b[3], b[4], b[5]]])
+K = np.linalg.cholesky(B)
+K = np.linalg.inv(K)
+K = K.T
     
     
 # get extrinsic matrix [R|t] for each images by K and H 
@@ -159,6 +157,7 @@ for h in H:
 
 print(extrinsics.shape)
 extrinsics = extrinsics.reshape(-1,3,4)
+
 
 
 import sys
