@@ -82,32 +82,58 @@ for p_imgs, p_objs in zip(imgpoints, objpoints):
     assert p_imgs.shape[0] == p_objs.shape[0], "Number of corner in the image"\
         "should match those on the real world chessboard."
     
+    # Build the normalization matrix.
+    def get_normalization_matrix(points):
+        x_mean, y_mean = np.mean(points, axis=0)
+        var_x, var_y = np.var(points, axis=0)
+        s_x, s_y = np.sqrt(2/var_x), np.sqrt(2/var_y)
+        return np.array([[s_x,   0, -s_x*x_mean],
+                         [  0, s_y, -s_y*y_mean],
+                         [  0,   0,           1]]), \
+               np.array([[1/s_x,     0, x_mean],
+                         [    0, 1/s_y, y_mean],
+                         [    0,     0,      1]])
+
+    # Normalize image points.
+    p_imgs = p_imgs[:, 0, :]
+    origin_img = p_imgs
+    N_img, N_inv_img = get_normalization_matrix(p_imgs)
+    p_imgs = np.hstack((p_imgs, np.ones((p_imgs.shape[0], 1)))).T
+    p_imgs = N_img.dot(p_imgs).T
+    # Normalize object points.
+    p_objs[:, 2] = 1
+    origin_obj = p_objs
+    N_obj, N_inv_obj = get_normalization_matrix(p_objs[:, :2])
+    p_objs = N_obj.dot(p_objs.T).T
+
     # Build the "P" matrix in the homogeneous equation in 02-camera p.73
     #
     # @P: The "P" matrix.
     P = np.zeros((len(p_imgs)<<1, 9))
-    p_objs[:, 2] = 1
     P[::2, :3] = p_objs
     P[1::2, 3:6] = p_objs
-    P[::2, 6:] = -p_objs * p_imgs[:, 0, 0, None]
-    P[1::2, 6:] = -p_objs * p_imgs[:, 0, 1, None]
+    P[::2, 6:] = -p_objs * p_imgs[:, 0, None]
+    P[1::2, 6:] = -p_objs * p_imgs[:, 1, None]
 
     # The homography @H[i] is the last column of the right singular matrix "V" of P.
     # Please remind that we get the tranpose of "V" through np.linalg.svd. Thus,
     # @H[i] is the last **row** of "V".
-    _, _, vh = np.linalg.svd(P, full_matrices=False)
-    H.append(vh[-1].reshape((3, 3)))
+    _, s, vh = np.linalg.svd(P, full_matrices=False)
+    tmp = vh[-1].reshape((3, 3))
+    tmp = N_inv_img.dot(tmp).dot(N_obj)
+    tmp /= tmp[2, 2]
+    H.append(tmp)
 
     # Verify whether we get the correct homography.
     """
     print('\n**********************************************')
-    for p_img, p_obj in zip(p_imgs[:, 0, :], p_objs):
+    for p_img, p_obj in zip(origin_img, origin_obj):
        get_point = H[-1].dot(p_obj)
        get_point = get_point[:2] / get_point[2]
        print(p_img, get_point)
     """
-   
-    
+
+
 # Find intrinsic matrix K
     
 def buildv(H, i, j):
@@ -125,7 +151,7 @@ for i in range(len(H)):
     V.append(buildv(H[i], 1, 1) - buildv(H[i], 2, 2))
 V = np.array(V)
 
-_, _, vh = np.linalg.svd(V)
+_, _, vh = np.linalg.svd(V.T.dot(V))
 b = vh[-1]
 B = np.array([[b[0], b[1], b[3]],
               [b[1], b[2], b[4]],
