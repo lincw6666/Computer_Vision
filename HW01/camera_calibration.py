@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 import cv2
 import glob
@@ -18,13 +19,13 @@ objpoints = [] # 3d points in real world space
 imgpoints = [] # 2d points in image plane.
 
 # Make a list of calibration images
-images = glob.glob('data/*.jpg')
+data_path = 'data' if len(sys.argv)==1 else sys.argv[1]
+images = glob.glob(f'{data_path}/*.jpg')
 
 # Step through the list and search for chessboard corners
 print('Start finding chessboard corners...')
 for idx, fname in enumerate(images):
     img = cv2.imread(fname)
-    continue
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     plt.imshow(gray)
 
@@ -72,12 +73,10 @@ H = []
 
 # It takes a lot of time finding corner in the images. I saved the results to files
 # you can simply skip finding corner and use the data in the files directly.
-#np.save('imgpoints.npy', np.array(imgpoints))
-imgpoints = np.load('imgpoints.npy')
-#np.save('objpoints.npy', np.array(objpoints))
-objpoints = np.load('objpoints.npy')
-
-ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, img_size,None,None)
+#np.save('imgpoints2.npy', np.array(imgpoints))
+#imgpoints = np.load('imgpoints2.npy')
+#np.save('objpoints2.npy', np.array(objpoints))
+#objpoints = np.load('objpoints2.npy')
 for p_imgs, p_objs in zip(imgpoints, objpoints):
     assert p_imgs.shape[0] == p_objs.shape[0], "Number of corner in the image"\
         "should match those on the real world chessboard."
@@ -177,14 +176,10 @@ for h in H:
     extrinsics = np.hstack((extrinsics,R))
     extrinsics = np.hstack((extrinsics,t.reshape(3,1)))
 
-
 extrinsics = np.array(np.hsplit(extrinsics,len(H)))
 
-
-
-import sys
-#sys.exit(0)
 """
+End my code
 """
 # show the camera extrinsics
 print('Show the camera extrinsics')
