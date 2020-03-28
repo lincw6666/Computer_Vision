@@ -127,9 +127,9 @@ for p_imgs, p_objs in zip(imgpoints, objpoints):
     """
     print('\n**********************************************')
     for p_img, p_obj in zip(origin_img, origin_obj):
-       get_point = H[-1].dot(p_obj)
-       get_point = get_point[:2] / get_point[2]
-       print(p_img, get_point)
+        get_point = H[-1].dot(p_obj)
+        get_point = get_point[:2] / get_point[2]
+        print(p_img, get_point)
     """
 
 
@@ -150,11 +150,15 @@ for i in range(len(H)):
     V.append(buildv(H[i], 1, 1) - buildv(H[i], 2, 2))
 V = np.array(V)
 
-_, _, vh = np.linalg.svd(V.T.dot(V))
+_, _, vh = np.linalg.svd(V)
 b = vh[-1]
 B = np.array([[b[0], b[1], b[3]],
               [b[1], b[2], b[4]],
               [b[3], b[4], b[5]]])
+# @b may be a singular vector up to a scale -1. This makes @B a negative
+# definite matrix. We need to use -@B instead.
+if np.any(np.linalg.eig(B)[0]):
+    B = -B
 K = np.linalg.cholesky(B)
 K = np.linalg.inv(K)
 K = K.T
