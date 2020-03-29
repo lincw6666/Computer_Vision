@@ -157,7 +157,7 @@ B = np.array([[b[0], b[1], b[3]],
               [b[3], b[4], b[5]]])
 # @b may be a singular vector up to a scale -1. This makes @B a negative
 # definite matrix. We need to use -@B instead.
-if np.any(np.linalg.eig(B)[0]):
+if np.all(np.linalg.eig(B)[0] < 0):
     B = -B
 K = np.linalg.cholesky(B)
 K = np.linalg.inv(K)
