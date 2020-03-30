@@ -120,7 +120,8 @@ for p_imgs, p_objs in zip(imgpoints, objpoints):
     _, s, vh = np.linalg.svd(P, full_matrices=False)
     tmp = vh[-1].reshape((3, 3))
     tmp = N_inv_img.dot(tmp).dot(N_obj)
-    tmp /= tmp[2, 2]
+    if (tmp@p_objs[0])[2] < 0:
+        tmp = -tmp
     H.append(tmp)
 
     # Verify whether we get the correct homography.
