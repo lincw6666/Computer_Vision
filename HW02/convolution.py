@@ -19,7 +19,7 @@ def _image_reshape(img, shape):
     return np.array([img[w*i: w*(i+1), 0, :] for i in range(h)], dtype=np.uint8)
 
 
-def _array_to_vector(img, kernel_size, padding=None):
+def _array_to_vector(img, kernel_size, padding):
     # Set kernel size and image size.
     k_rows, k_cols = kernel_size
     assert isinstance(k_rows, int) and isinstance(k_cols, int)
@@ -27,14 +27,8 @@ def _array_to_vector(img, kernel_size, padding=None):
     assert isinstance(rows, int) and isinstance(cols, int) and\
         isinstance(channels, int)
 
-    # Set padding.
-    if padding is not None:
-        assert isinstance(padding, tuple) and len(padding) == 2
-        padx, pady = padding
-    else:
-        padx, pady = k_rows//2, k_cols//2
-
     # Pad the image.
+    padx, pady = padding
     padded_img_shape = (rows+2*padx, cols+2*pady, channels)
     padded_img = np.zeros(padded_img_shape)
     padded_img[padx:rows+padx, pady:cols+pady, :] = img
@@ -61,14 +55,24 @@ def convolution(img, kernel, padding=None):
     assert isinstance(kernel, np.ndarray), '[convolution] Error!! Invalid' +\
         'kernel type: ' + str(type(kernel)) + '. It should be a np.ndarray.'
     
+    # Set padding.
+    if padding is not None:
+        assert isinstance(padding, tuple) and len(padding) == 2
+    else:
+        padding = (kernel.shape[0] // 2, kernel.shape[1] // 2)
+
     # Main task.
     vectorized_img = _array_to_vector(img, kernel.shape, padding=padding)
-    kernel = kernel.reshape(-1, 1)
     return _image_reshape(
         np.stack(
-            [np.matmul(vec_img, kernel) for vec_img in vectorized_img], axis=-1
+            [np.matmul(vec_img, kernel.reshape(-1, 1))\
+                for vec_img in vectorized_img], axis=-1
         ),
-        img.shape)
+        (
+            img.shape[0] - kernel.shape[0] + padding[0]*2 + 1,
+            img.shape[1] - kernel.shape[1] + padding[1]*2 + 1,
+            img.shape[2]
+        ))
 
 
 def debug():
