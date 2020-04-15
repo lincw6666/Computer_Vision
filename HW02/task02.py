@@ -4,7 +4,7 @@ import os
 from matplotlib import pyplot as plt
 import math
 
-os.chdir('C:/Users/user/Desktop/NCTU/CV/CV2020_HW2/hw2_data/task1and2_hybrid_pyramid')
+os.chdir('your path')
 
 def GaussianFilter(x , y , D0 , highpass = True):
 	centerx = int(x/2) + 1 if x % 2 == 1 else int(x/2)
@@ -47,6 +47,8 @@ def hybridImage(img1, img2, img1D0, img2D0):
 	lowPassed = Lowpass(img2, img2D0)
 	return highPassed + lowPassed
 
+##############################################
+# For color_image
 def Filter_Color(img , mask):
 	shifted_img0 = ShiftImage(img[:,:,0])
 	shifted_img1 = ShiftImage(img[:,:,1])
