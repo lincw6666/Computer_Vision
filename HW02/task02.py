@@ -4,7 +4,7 @@ import os
 from matplotlib import pyplot as plt
 import math
 
-os.chdir('your path')
+os.chdir('C:/Users/user/Desktop/NCTU/CV/CV2020_HW2/hw2_data/task1and2_hybrid_pyramid')
 
 def GaussianFilter(x , y , D0 , highpass = True):
 	centerx = int(x/2) + 1 if x % 2 == 1 else int(x/2)
@@ -57,7 +57,7 @@ def Filter_Color(img , mask):
 	filtered_f0 = shifted_f0 * mask
 	filtered_f1 = shifted_f1 * mask
 	filtered_f2 = shifted_f2 * mask
-	filter_back = np.zeros(img.shape)
+	filter_back = np.zeros(img.shape , dtype = complex)
 	filter_back[:,:,0] = ShiftImage(np.fft.ifft2(filtered_f0))
 	filter_back[:,:,1] = ShiftImage(np.fft.ifft2(filtered_f1))
 	filter_back[:,:,2] = ShiftImage(np.fft.ifft2(filtered_f2))
@@ -83,7 +83,7 @@ Highpass_image = Highpass_Color(img1 , 20)
 Lowpass_image = Lowpass_Color(img2 , 20)
 
 hybrid = hybridImage_Color(img1, img2, 25, 10)
-#misc.imsave("marilyn-einstein.png", numpy.real(hybrid))
+
 cv2.imshow('hybrid' , hybrid.real.astype(np.uint8))
 cv2.waitKey(0)
 cv2.destroyAllWindows()
