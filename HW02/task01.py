@@ -9,16 +9,20 @@ os.chdir('your path')
 def GaussianFilter(x , y , D0 , highpass = True):
 	centerx = int(x/2) + 1 if x % 2 == 1 else int(x/2)
 	centery = int(y/2) + 1 if y % 2 == 1 else int(y/2)
-	Filter = np.zeros([x,y])
 	if highpass == True:
-		for i in range(x):
-			for j in range(y):
-					Filter[i,j] = 1 - (math.exp(-1 * ((i - centerx)**2 + (j - centery)**2) / (2 * D0**2)))
+		return np.array([
+			[
+				1 - math.exp(-((i-centerx)**2 + (j-centery)**2) / (2 * D0**2))\
+					for j in range(y)
+			] for i in range(x)
+		])
 	else:
-		for i in range(x):
-			for j in range(y):
-					Filter[i,j] = math.exp(-1 * ((i - centerx)**2 + (j - centery)**2) / (2 * D0**2))
-	return Filter
+		return np.array([
+			[
+				math.exp(-((i-centerx)**2 + (j-centery)**2) / (2 * D0**2))\
+					for j in range(y)
+			] for i in range(x)
+		])
 
 def ShiftImage(img):
 	shifted_img = img.copy()
