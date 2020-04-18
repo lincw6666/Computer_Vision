@@ -22,9 +22,8 @@ def GaussianFilter(x , y , D0 , highpass = True):
 
 def ShiftImage(img):
 	shifted_img = img.copy()
-	for i in range(img.shape[0]):
-		for j in range(img.shape[1]):
-			shifted_img[i,j] = shifted_img[i,j] * ((-1)**(i+1+j+1))
+	shifted_img[::2, 1::2] = -img[::2, 1::2]
+	shifted_img[1::2, ::2] = -img[1::2, ::2]
 	return shifted_img
 
 
