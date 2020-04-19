@@ -41,7 +41,7 @@ def IdealFilter(x , y , D0 , highpass = True):
 					for j in range(y)
 			] for i in range(x)
 		])
-	
+
 def ShiftImage(img):
 	shifted_img = img.copy()
 	shifted_img[::2, 1::2] = -img[::2, 1::2]
@@ -71,10 +71,15 @@ def IdealLowpass(img , D0):
 	x , y = img.shape
 	return Filter(img , IdealFilter(x , y , D0 , highpass = False))
 
-def hybridImage(img1, img2, img1D0, img2D0):
-	highPassed = Highpass(img1, img1D0)
-	lowPassed = Lowpass(img2, img2D0)
-	return highPassed + lowPassed
+def hybridImage(img1, img2, img1D0, img2D0 , Gaussian = True):
+	if Gaussian == True:
+		highPassed = GaussianHighpass(img1, img1D0)
+		lowPassed = GaussianLowpass(img2, img2D0)
+		return highPassed + lowPassed
+	else:
+		highPassed = IdealHighpass(img1, img1D0)
+		lowPassed = IdealLowpass(img2, img2D0)
+		return highPassed + lowPassed
 
 ##############################################
 # For color_image
@@ -88,10 +93,11 @@ def Filter_Color(img , mask):
 	filtered_f0 = shifted_f0 * mask
 	filtered_f1 = shifted_f1 * mask
 	filtered_f2 = shifted_f2 * mask
-	filter_back = np.zeros(img.shape , dtype = complex)
-	filter_back[:,:,0] = ShiftImage(np.fft.ifft2(filtered_f0))
-	filter_back[:,:,1] = ShiftImage(np.fft.ifft2(filtered_f1))
-	filter_back[:,:,2] = ShiftImage(np.fft.ifft2(filtered_f2))
+	filter_back = np.zeros(img.shape , dtype = np.float64)
+	filter_back[:,:,0] = ShiftImage(np.fft.ifft2(filtered_f0).real)
+	filter_back[:,:,1] = ShiftImage(np.fft.ifft2(filtered_f1).real)
+	filter_back[:,:,2] = ShiftImage(np.fft.ifft2(filtered_f2).real)
+	filter_back = normalize(filter_back)
 	return filter_back
 
 def GaussianHighpass_Color(img , D0):
@@ -114,22 +120,26 @@ def hybridImage_Color(img1, img2, img1D0, img2D0 , Gaussian = True):
 	if Gaussian == True:
 		highPassed = GaussianHighpass_Color(img1, img1D0)
 		lowPassed = GaussianLowpass_Color(img2, img2D0)
-		highPassed = highPassed.real.astype(np.uint8)
-		lowPassed = lowPassed.real.astype(np.uint8)
-		return highPassed + lowPassed
+		return normalize(highPassed + lowPassed)
 	else:
 		highPassed = IdealHighpass_Color(img1, img1D0)
 		lowPassed = IdealLowpass_Color(img2, img2D0)
-		return highPassed + lowPassed
+		return normalize(highPassed + lowPassed)
 
-img1 = cv2.imread("4_einstein.bmp" )
-img2 = cv2.imread("4_marilyn.bmp" )
+def normalize(img):
+	for i in range(3):
+		img[:,:,i] = (img[:,:,i] - np.min(img[:,:,i]))
+		img[:,:,i] = img[:,:,i] / np.max(img[:,:,i])
+	return img
 
-Highpass_image = GaussianHighpass_Color(img1 , 20)
-Lowpass_image = GaussianLowpass_Color(img2 , 20)
+img1 = cv2.imread("5_fish.bmp" )
+img2 = cv2.imread("5_submarine.bmp" )
 
-hybrid = hybridImage_Color(img1, img2, 20 , 20 , Gaussian = True)
+Highpass_image = IdealHighpass_Color(img1 , 20)
+Lowpass_image = IdealLowpass_Color(img2 , 20)
+hybrid = hybridImage_Color(img1, img2, 10 , 10 , Gaussian = False)
 
-cv2.imshow('hybrid' , hybrid.real.astype(np.uint8))
+cv2.imshow('hybrid' , (hybrid*255).astype(np.uint8))
+#cv2.imwrite('Ideal_output5.jpg', (hybrid*255).astype(np.uint8))
 cv2.waitKey(0)
 cv2.destroyAllWindows()
