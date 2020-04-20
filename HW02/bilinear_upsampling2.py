@@ -177,8 +177,7 @@ def bilinear_upsampling(img, shape):
     ret_img[rdx+1::2, :rdy+1:] =  ret_img[rdx:-1:2, :rdy+1:] 					#top
     ret_img[rdx+1::2, :rdy+1:] += ret_img[rdx+2::2, :rdy+1:] 					#down
     ret_img[rdx+1::2, :rdy+1:] =  ret_img[rdx+1::2, :rdy+1:] / 2
-    print(ret_img.shape)
-    print(ret_img)
+    
     return ret_img.astype(np.uint8)
 
 
