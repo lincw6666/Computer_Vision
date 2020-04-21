@@ -21,7 +21,7 @@ class ImageLoader:
     def __iter__(self):
         for img_type in img_name.keys():
             for fname in img_name[img_type]:
-                yield self.cut_image(
+                yield fname, self.cut_image(
                     cv2.imread(self.root_dir + fname + '.' + img_type))
 
     def __getitem__(self, idx):
@@ -83,7 +83,7 @@ def visualization(img):
     cv2.destroyAllWindows()
 
 
-def visualize_merge_image(img, offset):
+def visualize_merge_image(img, offset, save_filename=None):
     # Define the origin of the merged images.
     rgb_origin = offset.min(axis=0)
     # Found the height and width of the merged images.
@@ -101,6 +101,8 @@ def visualize_merge_image(img, offset):
         rgb_img[start_h:start_h+img[i].shape[0],
                 start_w:start_w+img[i].shape[1], i] = img[i]
     rgb_img = rgb_img.astype(np.uint8)
+    if save_filename is not None:
+        cv2.imwrite(save_filename, rgb_img)
     plt.imshow(cv2.cvtColor(rgb_img, cv2.COLOR_BGR2RGB))
     plt.show()
 
@@ -122,7 +124,7 @@ if __name__ == '__main__':
     # Read image.
     img_loader = ImageLoader(args.data_dir)
     # for img in [img_loader['jpg', i] for i in range(len(img_name['jpg']))]:
-    for img in img_loader:
+    for fname, img in img_loader:
         # @img: a list contains 3 images, which belong to 3 different channels.
         #       These 3 images have shape (h, w), without channel dimension.
         gaussian_pyramid = []
@@ -193,4 +195,4 @@ if __name__ == '__main__':
             offset_range = 1
         
         # Plot the result.
-        visualize_merge_image(img, offset)
+        visualize_merge_image(img, offset, save_filename=f'{fname}.tif')
