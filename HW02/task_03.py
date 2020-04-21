@@ -4,6 +4,7 @@ import sys
 import argparse
 import matplotlib.pyplot as plt
 from convolution import convolution
+from task_02 import gaussian_kernel, downsampling
 
 
 img_name = {
@@ -134,7 +135,8 @@ if __name__ == '__main__':
             G = img[i].copy()
             tmp = [G]
             for i in range(int(np.log2(max(_img.shape))) - 6):
-                G = cv2.pyrDown(G)
+                blurG = np.squeeze(convolution(G[:, :, None], gaussian_kernel))
+                G = downsampling(blurG)
                 tmp.append(G)
             
             # Usage: @gaussian_pyramid[channel][level]
