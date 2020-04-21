@@ -154,9 +154,9 @@ if __name__ == '__main__':
         start_h = (gaussian_pyramid[-1][-1].shape[0]-h) // 2
         start_w = (gaussian_pyramid[-1][-1].shape[1]-w) // 2
         
-        kernel = np.array([[ 0, -1,  0],
-                           [-1,  4, -1],
-                           [ 0, -1,  0]])
+        kernel = np.array([[0,  1, 0],
+                           [1, -4, 1],
+                           [0,  1, 0]])
 
         for level in range(len(gaussian_pyramid[0])-1, -1, -1):
             # We compare B and G to R channel. Therefore, we fix R channel as
@@ -169,6 +169,7 @@ if __name__ == '__main__':
             # Lower 1 level makes the image 2 times bigger. Therefore, we need
             # to scale @h, @w, and @offset 2 times bigger.
             if level != len(gaussian_pyramid[0])-1:
+                start_h, start_w = start_h * 2, start_w * 2
                 offset = offset * 2
                 h, w = h * 2, w * 2
 
