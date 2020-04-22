@@ -106,7 +106,7 @@ for file in files:
 		plt.title(''), plt.xticks([]), plt.yticks([])
 		plt.subplot(1, 2, 2),plt.imshow(l_ms[i-1].reshape(l_ms[i-1].shape[:2]))#, cmap = 'gray')
 		plt.title(''), plt.xticks([]), plt.yticks([])
-		plt.savefig('./task02_Output/'+filename + '_laplacian_spectrum' + str(i) + '.png')
+		plt.savefig('./task02_Output/'+filename + '_laplacian_spectrum' + str(i) + '.png', pad_inches=0.0, bbox_inches='tight')
 
 	l = len(gaussian_img)
 	for i in range(1, l+1):
@@ -115,7 +115,7 @@ for file in files:
 		plt.title(''), plt.xticks([]), plt.yticks([])
 		plt.subplot(1, 2, 2),plt.imshow(g_ms[i-1].reshape(g_ms[i-1].shape[:2]))#, cmap = 'gray')
 		plt.title(''), plt.xticks([]), plt.yticks([])
-		plt.savefig('./task02_Output/'+filename + '_gaussian_spectrum' + str(i) + '.png')
+		plt.savefig('./task02_Output/'+filename + '_gaussian_spectrum' + str(i) + '.png', pad_inches=0.0, bbox_inches='tight')
 
 	image_pyramid(gaussian_img, filename + '_gaussian', isgray)
 	image_pyramid(Laplacian_img, filename + '_laplacian', isgray)
