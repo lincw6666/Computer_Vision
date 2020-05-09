@@ -5,6 +5,7 @@ import numpy as np
 
 # My packages.
 import sift as kpd
+import ransac
 
 
 def SquareDistance(f1, f2):
@@ -15,6 +16,7 @@ def SquareDistance(f1, f2):
 # Get the id of matched keypoints between @des1 and @des2 according to ratio
 # distance.
 #
+# Inputs:
 # @des1: Descriptor 1 for N points.
 # @des2: Descriptor 2 for M points.
 #
@@ -29,15 +31,14 @@ def GetMatchFeaturesID(des1, des2):
         for f1_id in range(des1.shape[0])
             for _dist in SquareDistance(des1[f1_id][None, :], des2)[None, :]
                 for f2_id in np.argpartition(_dist, 2)[:2][None, :]
-        if _dist[f2_id[0]] / _dist[f2_id[1]] < 0.8
+        if _dist[f2_id[0]] / _dist[f2_id[1]] < 0.6
     ])
 
-def DrawMatchKeypoints(img_pth1, img_pth2, kp1, kp2, match_id):
+def DrawMatchKeypoints(img_pth1, img_pth2, kp1, kp2):
     # Convert the type of matched keypoints to cv2.KeyPoint.
-    p1 = [cv2.KeyPoint(x=kp1[_id][0], y=kp1[_id][1], _size=1)
-            for _id in match_id[:, 0]]
-    p2 = [cv2.KeyPoint(x=kp2[_id][0], y=kp2[_id][1], _size=1)
-            for _id in match_id[:, 1]]
+    p1 = [cv2.KeyPoint(x=_p[0], y=_p[1], _size=1) for _p in kp1]
+    p2 = [cv2.KeyPoint(x=_p[0], y=_p[1], _size=1) for _p in kp2]
+
     # Build matched relationship in cv2.DMatch type.
     d_match = [
         cv2.DMatch(_imgIdx=0, _queryIdx=idx, _trainIdx=idx,_distance=0)
@@ -49,6 +50,12 @@ def DrawMatchKeypoints(img_pth1, img_pth2, kp1, kp2, match_id):
                                 d_match, out_img)
     cv2.imshow('Keypoints detection', out_img)
     cv2.waitKey(0)
+
+def MapKp2ToKp1(kp2, homography):
+    tmp_kp2 = np.hstack((kp2, np.ones((kp2.shape[0], 1)))).T
+    map_kp2 = homography @ tmp_kp2
+    map_kp2 /= map_kp2[2, :]
+    return map_kp2[:2, :].T
 
 
 if __name__ == '__main__':
@@ -76,5 +83,15 @@ if __name__ == '__main__':
         # -----> Part 02
         # Feature matching using ratio distance.
         match_id = GetMatchFeaturesID(des1, des2)
-        DrawMatchKeypoints(img_pth1, img_pth2, kp1, kp2, match_id)
+        kp1, kp2 = kp1[match_id[:, 0]], kp2[match_id[:, 1]]
+        DrawMatchKeypoints(img_pth1, img_pth2, kp1, kp2)
+
         # <----- Part 02
+
+        # -----> Part 03
+        # Get homography which maps p2 to p1's coordinate.
+        homography = ransac.RANSAC(kp1, kp2)
+        # Map p2 to p1's coordinate.
+        map_kp2 = MapKp2ToKp1(kp2, homography)
+        DrawMatchKeypoints(img_pth1, img_pth2, map_kp2, kp2)
+        # <----- Part 03
