@@ -2,6 +2,7 @@
 import cv2
 import os
 import numpy as np
+import time
 
 # My packages.
 import sift as kpd
@@ -66,45 +67,72 @@ def StitchingImg2ToImg1(img_pth1, img_pth2, homography):
     imgpoint = np.array([[0,0],               # image's corners
                          [y,0], 
                          [0,x], 
-                        [y,x]])
+                         [y,x]])
     imgpoint = np.hstack((imgpoint, np.ones((imgpoint.shape[0], 1)))).T
+
     # project image_2's four corners to image_1
     map_img2_cor = homography @ imgpoint       
     map_img2_cor /= map_img2_cor[2, :]
     map_img2_cor = map_img2_cor[:2, :].T
-    minx = int(np.min(map_img2_cor[:,1]))+1
-    maxx = int(np.max(map_img2_cor[:,1]))
-    miny = int(np.min(map_img2_cor[:,0]))+1
-    maxy = int(np.max(map_img2_cor[:,0]))
+    
+    minx = int(np.min(map_img2_cor[:, 1]))+1
+    maxx = int(np.max(map_img2_cor[:, 1]))
+    miny = int(np.min(map_img2_cor[:, 0]))+1
+    maxy = int(np.max(map_img2_cor[:, 0]))
     outputsize_x = np.max([x, maxx])
     outputsize_y = np.max([y, maxy])
-    stitching_img = np.zeros([outputsize_x*2,outputsize_y*2,3])
-    stitching_img[:x,:y,:] = img1
-    for i in range(minx,maxx):
-        for j in range(miny,maxy):
-            # inverse project the point to image_2
-            ori_point = np.dot(invhomography, np.array([j,i,1]).T)
-            ori_point /= ori_point[2]
-            ori_point = ori_point[:2].T
-            # determine the near four points to use linear interpolation
-            x0 = int(ori_point[1])
-            x1 = int(ori_point[1])+1
-            y0 = int(ori_point[0])
-            y1 = int(ori_point[0])+1
-            if (x0 > 0) & (x1 < x-1) & (y0 > 0) & (y1 < y-1):
-                for z in range(3):
-                    near_points = [(x0 , y0 , img2[x0,y0,z]), (x0 , y1 , img2[x0,y1,z]), (x1 , y0 , img2[x1,y0,z]), (x1 , y1 , img2[x1,y1,z])]
-                    stitching_img[i,j,z] = interpolation(ori_point[1], ori_point[0], near_points)
+    
+    stitching_img = np.zeros([outputsize_x*2, outputsize_y*2, 3])
+    stitching_img[:x, :y, :] = img1
+    
+    p1 = np.array([[j, i, 1] for i in range(minx, maxx) for j in range(miny, maxy)]).T
+    ori_points = invhomography @ p1
+    ori_points /= ori_points[2]
+    ori_points = ori_points[:2].T
+
+    ori_points = ori_points.T
+    uni = np.zeros((8, ori_points.shape[1]))
+    uni[0, :] = ori_points[1].astype(np.int64)
+    uni[1, :] = uni[0, :] + 1
+    uni[2, :] = ori_points[0].astype(np.int64)
+    uni[3, :] = uni[2, :] + 1
+    uni[4:6, :] = ori_points
+    uni[6, :] = p1[0, :]
+    uni[7, :] = p1[1, :]
+    uni = uni[:, uni[0] > 0]
+    uni = uni[:, uni[1] < x-1]
+    uni = uni[:, uni[2] > 0]
+    uni = uni[:, uni[3] < y-1]
+    val = np.zeros((4, uni.shape[1], 3))
+    val[0, :] = img2[(tuple(uni[0, :].astype(np.int64)), tuple(uni[2, :].astype(np.int64)))]
+    val[1, :] = img2[(tuple(uni[0, :].astype(np.int64)), tuple(uni[3, :].astype(np.int64)))]
+    val[2, :] = img2[(tuple(uni[1, :].astype(np.int64)), tuple(uni[2, :].astype(np.int64)))]
+    val[3, :] = img2[(tuple(uni[1, :].astype(np.int64)), tuple(uni[3, :].astype(np.int64)))]
+
+    s = (uni[1, :] - uni[0, :]) * (uni[3, :] - uni[2, :])
+    s0_id = (tuple(np.where(s == 0)[0]))
+    stitching_img[(tuple(uni[7, s0_id]), tuple(uni[6, s0_id]))] = val[0, s0_id]
+    s1_id = (tuple(np.where(s != 0)[0]))
+    x2_x = uni[1, s1_id] - uni[5, s1_id]
+    y2_y = uni[3, s1_id] - uni[4, s1_id]
+    y_y1 = uni[4, s1_id] - uni[2, s1_id]
+    x_x1 = uni[5, s1_id] - uni[0, s1_id]
+    stitching_img[(tuple(uni[7, s1_id].astype(np.int64)), tuple(uni[6, s1_id].astype(np.int64)))] = \
+        (val[0, s1_id] * (x2_x * y2_y)[:, None] + val[1, s1_id] * (x2_x * y_y1)[:, None] + \
+         val[2, s1_id] * (x_x1 * y2_y)[:, None] + val[3, s1_id] * (x_x1 * y_y1)[:, None]) / \
+        s[None, :].T[s1_id, :].T.squeeze()[:, None]
+
     stitching_img = stitching_img[:outputsize_x, :outputsize_y, :]
     return stitching_img
 
 def interpolation(x,y,points):
-    (x1,y1,q11) , (x1,y2,q12) , (x2,y1,q21) , (x2,y2,q22) = sorted(points)
+    (x1,y1,q11) , (x1,y2,q12) , (x2,y1,q21) , (x2,y2,q22) = points
     s = (x2-x1)*(y2-y1)
     if (s == 0):
         return q11
     else :
-        return (q11 * (x2 - x) * (y2 - y) + q12 * (x2 - x) * (y - y1) + q21 * (x - x1) * (y2 - y) + q22 * (x - x1) * (y - y1)) / s
+        return (q11 * (x2 - x) * (y2 - y) + q12 * (x2 - x) * (y - y1) + \
+                q21 * (x - x1) * (y2 - y) + q22 * (x - x1) * (y - y1)) / s
 
 
 if __name__ == '__main__':
@@ -147,7 +175,9 @@ if __name__ == '__main__':
         # <----- Part 03
         
         # <----- Part 04
+        start_t = time.time()
         stitching_img = StitchingImg2ToImg1(img_pth1, img_pth2, homography)
+        print('Time:', time.time() - start_t)
         cv2.imshow('map_img' + str(index), stitching_img.astype(np.uint8))
         cv2.imwrite(str(index)+'.jpg', stitching_img.astype(np.uint8))
         cv2.waitKey(0)
