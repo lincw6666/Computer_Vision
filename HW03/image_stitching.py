@@ -98,6 +98,14 @@ def StitchingImg2ToImg1(img_pth1, img_pth2, homography):
     stitching_img = stitching_img[:outputsize_x, :outputsize_y, :]
     return stitching_img
 
+def interpolation(x,y,points):
+    (x1,y1,q11) , (x1,y2,q12) , (x2,y1,q21) , (x2,y2,q22) = sorted(points)
+    s = (x2-x1)*(y2-y1)
+    if (s == 0):
+        return q11
+    else :
+        return (q11 * (x2 - x) * (y2 - y) + q12 * (x2 - x) * (y - y1) + q21 * (x - x1) * (y2 - y) + q22 * (x - x1) * (y - y1)) / s
+
 
 if __name__ == '__main__':
     # Path to your images.
