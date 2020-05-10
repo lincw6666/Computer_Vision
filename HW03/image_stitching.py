@@ -57,6 +57,47 @@ def MapKp2ToKp1(kp2, homography):
     map_kp2 /= map_kp2[2, :]
     return map_kp2[:2, :].T
 
+def StitchingImg2ToImg1(img_pth1, img_pth2, homography):
+    img1 = cv2.imread(img_pth1)
+    img2 = cv2.imread(img_pth2)
+    invhomography = np.linalg.inv(homography)
+    x = img2.shape[0]
+    y = img2.shape[1]
+    imgpoint = np.array([[0,0],               # image's corners
+                         [y,0], 
+                         [0,x], 
+                        [y,x]])
+    imgpoint = np.hstack((imgpoint, np.ones((imgpoint.shape[0], 1)))).T
+    # project image_2's four corners to image_1
+    map_img2_cor = homography @ imgpoint       
+    map_img2_cor /= map_img2_cor[2, :]
+    map_img2_cor = map_img2_cor[:2, :].T
+    minx = int(np.min(map_img2_cor[:,1]))+1
+    maxx = int(np.max(map_img2_cor[:,1]))
+    miny = int(np.min(map_img2_cor[:,0]))+1
+    maxy = int(np.max(map_img2_cor[:,0]))
+    outputsize_x = np.max([x, maxx])
+    outputsize_y = np.max([y, maxy])
+    stitching_img = np.zeros([outputsize_x*2,outputsize_y*2,3])
+    stitching_img[:x,:y,:] = img1
+    for i in range(minx,maxx):
+        for j in range(miny,maxy):
+            # inverse project the point to image_2
+            ori_point = np.dot(invhomography, np.array([j,i,1]).T)
+            ori_point /= ori_point[2]
+            ori_point = ori_point[:2].T
+            # determine the near four points to use linear interpolation
+            x0 = int(ori_point[1])
+            x1 = int(ori_point[1])+1
+            y0 = int(ori_point[0])
+            y1 = int(ori_point[0])+1
+            if (x0 > 0) & (x1 < x-1) & (y0 > 0) & (y1 < y-1):
+                for z in range(3):
+                    near_points = [(x0 , y0 , img2[x0,y0,z]), (x0 , y1 , img2[x0,y1,z]), (x1 , y0 , img2[x1,y0,z]), (x1 , y1 , img2[x1,y1,z])]
+                    stitching_img[i,j,z] = interpolation(ori_point[1], ori_point[0], near_points)
+    stitching_img = stitching_img[:outputsize_x, :outputsize_y, :]
+    return stitching_img
+
 
 if __name__ == '__main__':
     # Path to your images.
@@ -67,7 +108,8 @@ if __name__ == '__main__':
         [os.path.join(data_dir, _name[0]), os.path.join(data_dir, _name[1])]
         for _name in img_name
     ]
-
+    
+    index = 1
     for img_pth1, img_pth2 in img_pth:
         # -----> Part 01
         # Interest points detection & feature description by SIFT
@@ -95,3 +137,12 @@ if __name__ == '__main__':
         map_kp2 = MapKp2ToKp1(kp2, homography)
         DrawMatchKeypoints(img_pth1, img_pth2, map_kp2, kp2)
         # <----- Part 03
+        
+        # <----- Part 04
+        stitching_img = StitchingImg2ToImg1(img_pth1, img_pth2, homography)
+        cv2.imshow('map_img' + str(index), stitching_img.astype(np.uint8))
+        cv2.imwrite(str(index)+'.jpg', stitching_img.astype(np.uint8))
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        index = index+1
+        # -----> Part 04
