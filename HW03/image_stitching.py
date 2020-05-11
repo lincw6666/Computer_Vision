@@ -68,13 +68,14 @@ def StitchingImg2ToImg1(img_pth1, img_pth2, homography):
                          [y,0], 
                          [0,x], 
                          [y,x]])
-    imgpoint = np.hstack((imgpoint, np.ones((imgpoint.shape[0], 1)))).T
 
-    # project image_2's four corners to image_1
+    # Project image_2's four corners to image_1
+    imgpoint = np.hstack((imgpoint, np.ones((imgpoint.shape[0], 1)))).T
     map_img2_cor = homography @ imgpoint       
     map_img2_cor /= map_img2_cor[2, :]
     map_img2_cor = map_img2_cor[:2, :].T
     
+    # Boundary for projected @img2.
     minx = int(np.min(map_img2_cor[:, 1]))+1
     maxx = int(np.max(map_img2_cor[:, 1]))
     miny = int(np.min(map_img2_cor[:, 0]))+1
@@ -82,57 +83,56 @@ def StitchingImg2ToImg1(img_pth1, img_pth2, homography):
     outputsize_x = np.max([x, maxx])
     outputsize_y = np.max([y, maxy])
     
+    # Initialize the output image.
     stitching_img = np.zeros([outputsize_x*2, outputsize_y*2, 3])
     stitching_img[:x, :y, :] = img1
     
+    # Use back projection to fill the color in the projected @img2.
     p1 = np.array([[j, i, 1] for i in range(minx, maxx) for j in range(miny, maxy)]).T
     ori_points = invhomography @ p1
     ori_points /= ori_points[2]
-    ori_points = ori_points[:2].T
-
-    ori_points = ori_points.T
+    ori_points = ori_points[:2]
+    
     uni = np.zeros((8, ori_points.shape[1]))
-    uni[0, :] = ori_points[1].astype(np.int64)
-    uni[1, :] = uni[0, :] + 1
-    uni[2, :] = ori_points[0].astype(np.int64)
-    uni[3, :] = uni[2, :] + 1
-    uni[4:6, :] = ori_points
-    uni[6, :] = p1[0, :]
-    uni[7, :] = p1[1, :]
+    # Prepare four nearest pixels for interpolation.
+    uni[0] = ori_points[1].astype(np.int64) # x0
+    uni[1] = uni[0] + 1                     # x1
+    uni[2] = ori_points[0].astype(np.int64) # y0
+    uni[3] = uni[2] + 1                     # y1
+    # Save @ori_points and @p1 in @uni to speed up filtering values.
+    # Filtering condition: (x0 > 0) & (x1 < x-1) & (y0 > 0) & (y1 < y-1)
+    uni[4:6] = ori_points
+    uni[6] = p1[0]
+    uni[7] = p1[1]
+    # Filter values which satisfy the filtering condition.
     uni = uni[:, uni[0] > 0]
     uni = uni[:, uni[1] < x-1]
     uni = uni[:, uni[2] > 0]
     uni = uni[:, uni[3] < y-1]
-    val = np.zeros((4, uni.shape[1], 3))
-    val[0, :] = img2[(tuple(uni[0, :].astype(np.int64)), tuple(uni[2, :].astype(np.int64)))]
-    val[1, :] = img2[(tuple(uni[0, :].astype(np.int64)), tuple(uni[3, :].astype(np.int64)))]
-    val[2, :] = img2[(tuple(uni[1, :].astype(np.int64)), tuple(uni[2, :].astype(np.int64)))]
-    val[3, :] = img2[(tuple(uni[1, :].astype(np.int64)), tuple(uni[3, :].astype(np.int64)))]
 
-    s = (uni[1, :] - uni[0, :]) * (uni[3, :] - uni[2, :])
-    s0_id = (tuple(np.where(s == 0)[0]))
-    stitching_img[(tuple(uni[7, s0_id]), tuple(uni[6, s0_id]))] = val[0, s0_id]
-    s1_id = (tuple(np.where(s != 0)[0]))
-    x2_x = uni[1, s1_id] - uni[5, s1_id]
-    y2_y = uni[3, s1_id] - uni[4, s1_id]
-    y_y1 = uni[4, s1_id] - uni[2, s1_id]
-    x_x1 = uni[5, s1_id] - uni[0, s1_id]
-    stitching_img[(tuple(uni[7, s1_id].astype(np.int64)), tuple(uni[6, s1_id].astype(np.int64)))] = \
-        (val[0, s1_id] * (x2_x * y2_y)[:, None] + val[1, s1_id] * (x2_x * y_y1)[:, None] + \
-         val[2, s1_id] * (x_x1 * y2_y)[:, None] + val[3, s1_id] * (x_x1 * y_y1)[:, None]) / \
-        s[None, :].T[s1_id, :].T.squeeze()[:, None]
+    # Get values in @img2 according to x0, x1, y0, y1.
+    uni_0 = tuple(uni[0].astype(np.int64))  # x0
+    uni_1 = tuple(uni[1].astype(np.int64))  # x1
+    uni_2 = tuple(uni[2].astype(np.int64))  # y0
+    uni_3 = tuple(uni[3].astype(np.int64))  # y1
+    val = np.array([
+        img2[(uni_0, uni_2)],
+        img2[(uni_0, uni_3)],
+        img2[(uni_1, uni_2)],
+        img2[(uni_1, uni_3)]
+    ])
+
+    # Interpolation.
+    x1_x = uni[1] - uni[5]  # x1 - x
+    y1_y = uni[3] - uni[4]  # y1 - y
+    y_y0 = uni[4] - uni[2]  # y - y0
+    x_x0 = uni[5] - uni[0]  # x - x0
+    stitching_img[(tuple(uni[7].astype(np.int64)), tuple(uni[6].astype(np.int64)))] = \
+        val[0] * (x1_x * y1_y)[:, None] + val[1] * (x1_x * y_y0)[:, None] + \
+        val[2] * (x_x0 * y1_y)[:, None] + val[3] * (x_x0 * y_y0)[:, None]
 
     stitching_img = stitching_img[:outputsize_x, :outputsize_y, :]
     return stitching_img
-
-def interpolation(x,y,points):
-    (x1,y1,q11) , (x1,y2,q12) , (x2,y1,q21) , (x2,y2,q22) = points
-    s = (x2-x1)*(y2-y1)
-    if (s == 0):
-        return q11
-    else :
-        return (q11 * (x2 - x) * (y2 - y) + q12 * (x2 - x) * (y - y1) + \
-                q21 * (x - x1) * (y2 - y) + q22 * (x - x1) * (y - y1)) / s
 
 
 if __name__ == '__main__':
