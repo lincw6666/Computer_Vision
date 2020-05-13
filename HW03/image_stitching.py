@@ -82,10 +82,11 @@ def StitchingImg2ToImg1(img_pth1, img_pth2, homography):
     maxy = int(np.max(map_img2_cor[:, 0]))
     outputsize_x = np.max([x, maxx])
     outputsize_y = np.max([y, maxy])
-    
+    MIN = min(minx, miny)
+    start = MIN * -1 if MIN < 0 else 0
     # Initialize the output image.
-    stitching_img = np.zeros([outputsize_x*2, outputsize_y*2, 3])
-    stitching_img[:x, :y, :] = img1
+    stitching_img = np.zeros([outputsize_x + start, outputsize_y + start, 3])
+    stitching_img[start:x + start, start:y + start, :] = img1
     
     # Use back projection to fill the color in the projected @img2.
     p1 = np.array([[j, i, 1] for i in range(minx, maxx) for j in range(miny, maxy)]).T
@@ -102,14 +103,13 @@ def StitchingImg2ToImg1(img_pth1, img_pth2, homography):
     # Save @ori_points and @p1 in @uni to speed up filtering values.
     # Filtering condition: (x0 > 0) & (x1 < x-1) & (y0 > 0) & (y1 < y-1)
     uni[4:6] = ori_points
-    uni[6] = p1[0]
-    uni[7] = p1[1]
+    uni[6] = np.add(p1[0], start) 
+    uni[7] = np.add(p1[1], start) 
     # Filter values which satisfy the filtering condition.
     uni = uni[:, uni[0] > 0]
     uni = uni[:, uni[1] < x-1]
     uni = uni[:, uni[2] > 0]
     uni = uni[:, uni[3] < y-1]
-
     # Get values in @img2 according to x0, x1, y0, y1.
     uni_0 = tuple(uni[0].astype(np.int64))  # x0
     uni_1 = tuple(uni[1].astype(np.int64))  # x1
@@ -131,7 +131,7 @@ def StitchingImg2ToImg1(img_pth1, img_pth2, homography):
         val[0] * (x1_x * y1_y)[:, None] + val[1] * (x1_x * y_y0)[:, None] + \
         val[2] * (x_x0 * y1_y)[:, None] + val[3] * (x_x0 * y_y0)[:, None]
 
-    stitching_img = stitching_img[:outputsize_x, :outputsize_y, :]
+    #stitching_img = stitching_img[:outputsize_x, :outputsize_y, :]
     return stitching_img
 
 
