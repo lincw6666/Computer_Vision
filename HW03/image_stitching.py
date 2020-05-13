@@ -71,10 +71,9 @@ def StitchingImg2ToImg1(img_pth1, img_pth2, homography):
 
     # Project image_2's four corners to image_1
     imgpoint = np.hstack((imgpoint, np.ones((imgpoint.shape[0], 1)))).T
-    map_img2_cor = homography @ imgpoint       
+    map_img2_cor = homography @ imgpoint  
     map_img2_cor /= map_img2_cor[2, :]
     map_img2_cor = map_img2_cor[:2, :].T
-    
     # Boundary for projected @img2.
     minx = int(np.min(map_img2_cor[:, 1]))+1
     maxx = int(np.max(map_img2_cor[:, 1]))
@@ -82,11 +81,11 @@ def StitchingImg2ToImg1(img_pth1, img_pth2, homography):
     maxy = int(np.max(map_img2_cor[:, 0]))
     outputsize_x = np.max([x, maxx])
     outputsize_y = np.max([y, maxy])
-    MIN = min(minx, miny)
-    start = MIN * -1 if MIN < 0 else 0
+    shiftx = minx * -1 if minx < 0 else 0
+    shifty = miny * -1 if miny < 0 else 0
     # Initialize the output image.
-    stitching_img = np.zeros([outputsize_x + start, outputsize_y + start, 3])
-    stitching_img[start:x + start, start:y + start, :] = img1
+    stitching_img = np.zeros([outputsize_x + shiftx, outputsize_y + shifty, 3])
+    stitching_img[shiftx:x + shiftx, shifty:y + shifty, :] = img1
     
     # Use back projection to fill the color in the projected @img2.
     p1 = np.array([[j, i, 1] for i in range(minx, maxx) for j in range(miny, maxy)]).T
@@ -103,8 +102,8 @@ def StitchingImg2ToImg1(img_pth1, img_pth2, homography):
     # Save @ori_points and @p1 in @uni to speed up filtering values.
     # Filtering condition: (x0 > 0) & (x1 < x-1) & (y0 > 0) & (y1 < y-1)
     uni[4:6] = ori_points
-    uni[6] = np.add(p1[0], start) 
-    uni[7] = np.add(p1[1], start) 
+    uni[6] = np.add(p1[0], shifty) 
+    uni[7] = np.add(p1[1], shiftx) 
     # Filter values which satisfy the filtering condition.
     uni = uni[:, uni[0] > 0]
     uni = uni[:, uni[1] < x-1]
