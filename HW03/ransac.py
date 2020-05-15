@@ -63,7 +63,7 @@ def RANSAC(p1, p2):
     assert p1.shape[0] == p2.shape[0]
 
     # Sample @n_samples pairs in each iteration.
-    n_samples = int(p1.shape[0] * 0.1)
+    n_samples = 8 # int(p1.shape[0] * 0.1)
     # Total @n_iters iterations.
     outlier_ratio = 0.05
     n_iters = int(np.log(1 - 0.99) / np.log(1 - (1-outlier_ratio)**n_samples))
@@ -85,11 +85,11 @@ def RANSAC(p1, p2):
         map_p2 /= map_p2[2, :]
         map_p2 = map_p2[:2, :].T
         # Use square error.
-        error = np.sum((p1 - map_p2) ** 2, axis=1)
+        error = np.sqrt(np.sum((p1 - map_p2) ** 2, axis=1))
         # Calculate inlier ratio according to the threshold.
         inlier_num = len(error[error < inlier_threshold])
         inlier_ratio = inlier_num / p1.shape[0]
-        if inlier_ratio > best_inlier_ratio:
+        if inlier_ratio >= best_inlier_ratio:
             best_inlier_ratio = inlier_ratio
             best_homography = H
     

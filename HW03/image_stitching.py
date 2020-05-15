@@ -35,7 +35,7 @@ def GetMatchFeaturesID(des1, des2):
         if _dist[f2_id[0]] / _dist[f2_id[1]] < 0.6
     ])
 
-def DrawMatchKeypoints(img_pth1, img_pth2, kp1, kp2):
+def DrawMatchKeypoints(img1, img2, kp1, kp2):
     # Convert the type of matched keypoints to cv2.KeyPoint.
     p1 = [cv2.KeyPoint(x=_p[0], y=_p[1], _size=1) for _p in kp1]
     p2 = [cv2.KeyPoint(x=_p[0], y=_p[1], _size=1) for _p in kp2]
@@ -46,21 +46,21 @@ def DrawMatchKeypoints(img_pth1, img_pth2, kp1, kp2):
         for idx in range(len(p1))
     ]
     out_img = np.array([])
-    out_img = cv2.drawMatches(cv2.imread(img_pth1), p1,
-                                cv2.imread(img_pth2), p2,
-                                d_match, out_img)
+    out_img = cv2.drawMatches(img1, p1,
+                              img2, p2,
+                              d_match, out_img)
     cv2.imshow('Keypoints detection', out_img)
     cv2.waitKey(0)
 
-def MapKp2ToKp1(kp2, homography):
+def MapKp2ToKp1(kp2, homography, shiftx=0, shifty=0):
     tmp_kp2 = np.hstack((kp2, np.ones((kp2.shape[0], 1)))).T
     map_kp2 = homography @ tmp_kp2
     map_kp2 /= map_kp2[2, :]
+    map_kp2[0] += shifty
+    map_kp2[1] += shiftx
     return map_kp2[:2, :].T
 
-def StitchingImg2ToImg1(img_pth1, img_pth2, homography):
-    img1 = cv2.imread(img_pth1)
-    img2 = cv2.imread(img_pth2)
+def StitchingImg2ToImg1(img1, img2, homography, _shiftx, _shifty):
     invhomography = np.linalg.inv(homography)
     x = img2.shape[0]
     y = img2.shape[1]
@@ -73,19 +73,21 @@ def StitchingImg2ToImg1(img_pth1, img_pth2, homography):
     imgpoint = np.hstack((imgpoint, np.ones((imgpoint.shape[0], 1)))).T
     map_img2_cor = homography @ imgpoint  
     map_img2_cor /= map_img2_cor[2, :]
+    map_img2_cor[0] += _shifty
+    map_img2_cor[1] += _shiftx
     map_img2_cor = map_img2_cor[:2, :].T
     # Boundary for projected @img2.
     minx = int(np.min(map_img2_cor[:, 1]))+1
     maxx = int(np.max(map_img2_cor[:, 1]))
     miny = int(np.min(map_img2_cor[:, 0]))+1
     maxy = int(np.max(map_img2_cor[:, 0]))
-    outputsize_x = np.max([x, maxx])
-    outputsize_y = np.max([y, maxy])
+    outputsize_x = np.max([img1.shape[0], maxx])
+    outputsize_y = np.max([img1.shape[1], maxy])
     shiftx = minx * -1 if minx < 0 else 0
     shifty = miny * -1 if miny < 0 else 0
     # Initialize the output image.
     stitching_img = np.zeros([outputsize_x + shiftx, outputsize_y + shifty, 3])
-    stitching_img[shiftx:x + shiftx, shifty:y + shifty, :] = img1
+    stitching_img[shiftx:img1.shape[0] + shiftx, shifty:img1.shape[1] + shifty, :] = img1
     
     # Use back projection to fill the color in the projected @img2.
     p1 = np.array([[j, i, 1] for i in range(minx, maxx) for j in range(miny, maxy)]).T
@@ -102,8 +104,8 @@ def StitchingImg2ToImg1(img_pth1, img_pth2, homography):
     # Save @ori_points and @p1 in @uni to speed up filtering values.
     # Filtering condition: (x0 > 0) & (x1 < x-1) & (y0 > 0) & (y1 < y-1)
     uni[4:6] = ori_points
-    uni[6] = np.add(p1[0], shifty) 
-    uni[7] = np.add(p1[1], shiftx) 
+    uni[6] = np.add(p1[0], shifty + _shifty) 
+    uni[7] = np.add(p1[1], shiftx + _shiftx) 
     # Filter values which satisfy the filtering condition.
     uni = uni[:, uni[0] > 0]
     uni = uni[:, uni[1] < x-1]
@@ -131,55 +133,70 @@ def StitchingImg2ToImg1(img_pth1, img_pth2, homography):
         val[2] * (x_x0 * y1_y)[:, None] + val[3] * (x_x0 * y_y0)[:, None]
 
     #stitching_img = stitching_img[:outputsize_x, :outputsize_y, :]
-    return stitching_img
+    return stitching_img, shiftx, shifty
 
 
 if __name__ == '__main__':
     # Path to your images.
     data_dir = 'data'
     img_name = [['1.jpg', '2.jpg'], ['hill1.JPG', 'hill2.JPG'],
-                ['S1.jpg', 'S2.jpg']]
+                ['S1.jpg', 'S2.jpg'],
+                ['test1.jpg', 'test2.jpg', 'test3.jpg']]
     img_pth = [
-        [os.path.join(data_dir, _name[0]), os.path.join(data_dir, _name[1])]
-        for _name in img_name
+        [os.path.join(data_dir, _name) for _name in _name_list]
+        for _name_list in img_name
     ]
     
-    index = 1
-    for img_pth1, img_pth2 in img_pth:
-        # -----> Part 01
-        # Interest points detection & feature description by SIFT
+    index = 0
+    for _img_pth in img_pth:
+        homography = np.identity(3)
+        shiftx, shifty = 0, 0
+        stitching_img = cv2.imread(_img_pth[0])
+        for img_pth_id in range(len(_img_pth) - 1):
+            img1 = cv2.imread(_img_pth[img_pth_id]) # stitching_img
+            img2 = cv2.imread(_img_pth[img_pth_id + 1])
+            # -----> Part 01
+            # Interest points detection & feature description by SIFT
 
-        # Get keypoints and their descriptor.
-        # 
-        # @kpX: Keypoints.
-        # @desX: Descriptor.
-        kp1, des1 = kpd.SIFT(img_pth1)
-        kp2, des2 = kpd.SIFT(img_pth2)
-        # <----- Part 01
+            # Get keypoints and their descriptor.
+            # 
+            # @kpX: Keypoints.
+            # @desX: Descriptor.
+            kp1, des1 = kpd.SIFT(img1)
+            kp2, des2 = kpd.SIFT(img2)
+            # <----- Part 01
 
-        # -----> Part 02
-        # Feature matching using ratio distance.
-        match_id = GetMatchFeaturesID(des1, des2)
-        kp1, kp2 = kp1[match_id[:, 0]], kp2[match_id[:, 1]]
-        DrawMatchKeypoints(img_pth1, img_pth2, kp1, kp2)
+            # -----> Part 02
+            # Feature matching using ratio distance.
+            match_id = GetMatchFeaturesID(des1, des2)
+            kp1, kp2 = kp1[match_id[:, 0]], kp2[match_id[:, 1]]
+            DrawMatchKeypoints(img1, img2, kp1, kp2)
 
-        # <----- Part 02
+            # <----- Part 02
 
-        # -----> Part 03
-        # Get homography which maps p2 to p1's coordinate.
-        homography = ransac.RANSAC(kp1, kp2)
-        # Map p2 to p1's coordinate.
-        map_kp2 = MapKp2ToKp1(kp2, homography)
-        DrawMatchKeypoints(img_pth1, img_pth2, map_kp2, kp2)
-        # <----- Part 03
-        
-        # <----- Part 04
-        start_t = time.time()
-        stitching_img = StitchingImg2ToImg1(img_pth1, img_pth2, homography)
-        print('Time:', time.time() - start_t)
-        cv2.imshow('map_img' + str(index), stitching_img.astype(np.uint8))
-        cv2.imwrite(str(index)+'.jpg', stitching_img.astype(np.uint8))
+            # -----> Part 03
+            # Get homography which maps p2 to p1's coordinate.
+            homography_now = ransac.RANSAC(kp1, kp2)
+            homography = homography @ homography_now
+            # Map p2 to p1's coordinate.
+            map_kp2 = MapKp2ToKp1(kp2, homography, shiftx, shifty)
+            DrawMatchKeypoints(stitching_img, img2, map_kp2, kp2)
+            # <----- Part 03
+            
+            # <----- Part 04
+            start_t = time.time()
+            stitching_img, shiftx, shifty = StitchingImg2ToImg1(stitching_img,
+                                                                img2,
+                                                                homography,
+                                                                shiftx,
+                                                                shifty)
+            stitching_img = stitching_img.astype(np.uint8)
+            print('Time:', time.time() - start_t)
+            # -----> Part 04
+
+        # Show the result.    
+        cv2.imshow('map_img' + str(index), stitching_img)
+        cv2.imwrite(str(index)+'.jpg', stitching_img)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
         index = index+1
-        # -----> Part 04
