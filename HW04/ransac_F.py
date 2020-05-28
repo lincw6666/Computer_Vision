@@ -52,8 +52,6 @@ def RANSAC(p1, p2):
     # Total @n_iters iterations.
     outlier_ratio = 0.05
     n_iters = int(np.log(1 - 0.99) / np.log(1 - (1-outlier_ratio)**n_samples))
-    print("s", n_samples)
-    print("it", n_iters)
     inlier_threshold = 1e-7
     best_Fundamental = None
     best_inlier_ratio = 0.0
@@ -75,5 +73,4 @@ def RANSAC(p1, p2):
         if inlier_ratio >= best_inlier_ratio:
             best_inlier_ratio = inlier_ratio
             best_Fundamental = F
-    print("best_inlier_ratio : \n", best_inlier_ratio)
     return best_Fundamental
