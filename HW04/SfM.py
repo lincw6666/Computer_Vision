@@ -1,6 +1,7 @@
 # Standard packages.
 import cv2
 import numpy as np
+import ransac_F
 
 # My packages.
 import keypoint_detection as kpd
@@ -65,16 +66,19 @@ if __name__ == '__main__':
     # RANSAC parameters.
     #
     # Sample @n_samples pairs in each iteration.
-    n_samples = 8
+    # n_samples = 8
     # Total @n_iters iterations.
-    outlier_ratio = 0.05
-    n_iters = int(np.log(1 - 0.99) / np.log(1 - (1-outlier_ratio)**n_samples))
+    # outlier_ratio = 0.05
+    # n_iters = int(np.log(1 - 0.99) / np.log(1 - (1-outlier_ratio)**n_samples))
 
-    inlier_threshold = 10.0 # It's not the correct value. Need to be modify.
-    best_F = None
-    best_inlier_ratio = 0.0
-
-    for _ in range(n_iters):
+    # inlier_threshold = 10.0 # It's not the correct value. Need to be modify.
+    # best_F = None
+    # best_inlier_ratio = 0.0
+    
+    # write above parameters ans below for loop in ransac_F.RANSAC 
+    F = ransac_F.RANSAC(x1.T, x2.T)
+    
+    # for _ in range(n_iters):
         # Sample @n_samples points.
 
         #
