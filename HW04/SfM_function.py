@@ -62,8 +62,6 @@ def draw_epipolar_line(img1, img2, _x1, _x2, F):
 		cv2.circle(img1, (int(x1[:, i][0]), int(x1[:, i][1])), 5, color, -1)
 		cv2.circle(img2, (int(x2[:, i][0]), int(x2[:, i][1])), 5, color, -1)
 
-	cv2.imwrite('epopolar image1.jpg', img1)
-	cv2.imwrite('epopolar image2.jpg', img2)
 	cv2.imshow('epopolar image1', img1)
 	cv2.imshow('epopolar image2', img2)
 	cv2.waitKey(0)
