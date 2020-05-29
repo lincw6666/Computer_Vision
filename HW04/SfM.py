@@ -138,11 +138,19 @@ if __name__ == '__main__':
     # matrix.
 
     W = np.asarray([[0, -1, 0], [1, 0, 0], [0, 0, 1]])
-
+    Z = np.asarray([[0, 1, 0], [-1, 0, 0], [0, 0, 0]])
     E = K1.T @ F @ K2
 
     U, S, V = np.linalg.svd(E)
-    t = U[:, 2].reshape(-1, 1)
+
+    m = (S[0] + S[1]) / 2
+    E = U @ np.array([[m, 0, 0], [0, m, 0], [0, 0, 0]]) @ V
+    U, S, V = np.linalg.svd(E)
+
+    #t = U[:, 2].reshape(-1, 1)
+    Tx = U @ Z @ U.T
+    t = np.asarray([Tx[2,1], Tx[0, 2], Tx[1, 0]]).reshape(-1, 1)
+
     R1 = U @ W @ V.T
     R1 = R1 * np.sign(np.linalg.det(R1))
     R2 = U @ W.T @ V.T
