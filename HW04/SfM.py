@@ -5,7 +5,7 @@ import ransac_F
 
 # My packages.
 import keypoint_detection as kpd
-
+import triangulation 
 
 if __name__ == '__main__':
     # Assumption: @x1 are points from first image. @x2 are points from the other
@@ -77,7 +77,8 @@ if __name__ == '__main__':
     
     # write above parameters ans below for loop in ransac_F.RANSAC 
     F = ransac_F.RANSAC(x1.T, x2.T)
-    
+    # de-normalize
+    F = T2.T @ F @ T1
     # for _ in range(n_iters):
         # Sample @n_samples points.
 
@@ -136,6 +137,63 @@ if __name__ == '__main__':
 
     # Step 04: Get 4 possible solutions of essential matrix from fundamental
     # matrix.
+
+    W = np.asarray([[0, -1, 0], [1, 0, 0], [0, 0, 1]])
+
+    E = K1.T @ F @ K2
+
+    U, S, V = np.linalg.svd(E)
+    t = U[:, 2].reshape(-1, 1)
+    R1 = U @ W @ V.T
+    R1 = R1 * np.sign(np.linalg.det(R1))
+    R2 = U @ W.T @ V.T
+    R2 = R2 * np.sign(np.linalg.det(R2))    
+
+    P1 = np.asarray([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0]])
+    P21 = np.hstack((R1, t))
+    P22 = np.hstack((R1, -t)) 
+    P23 = np.hstack((R2, t))
+    P24 = np.hstack((R2, -t))  
+
+    X1 = triangulation.triangulation(_x1.T, _x2.T, P1, P21)
+    X2 = triangulation.triangulation(_x1.T, _x2.T, P1, P22)
+    X3 = triangulation.triangulation(_x1.T, _x2.T, P1, P23)
+    X4 = triangulation.triangulation(_x1.T, _x2.T, P1, P24)
+
+    print(P1.shape, X1.shape)
+    x1_1 = P1.dot(X1.T)
+    x2_1 = P21.dot(X1.T)
+
+    x1_2 = P1.dot(X2.T)
+    x2_2 = P22.dot(X2.T)
+
+    x1_3 = P1.dot(X3.T)
+    x2_3 = P23.dot(X3.T)
+
+    x1_4 = P1.dot(X4.T)
+    x2_4 = P24.dot(X4.T)  
+    
+    scores = []
+    depth1_1 = x1_1[2,:]
+    depth2_1 = x2_1[2,:]
+    scores_1 = (depth1_1 > 0) + (depth2_1 > 0)
+    scores.append(np.sum(scores_1 == 2))
+
+    depth1_2 = x1_2[2,:]
+    depth2_2 = x2_2[2,:]
+    scores_2 = (depth1_2 > 0) + (depth2_2 > 0)
+    scores.append(np.sum(scores_2 == 2))
+
+    depth1_3 = x1_3[2,:]
+    depth2_3 = x2_3[2,:]
+    scores_3 = (depth1_3 > 0) + (depth2_3 > 0)
+    scores.append(np.sum(scores_3 == 2))
+
+    depth1_4 = x1_3[2,:]
+    depth2_4 = x2_3[2,:]
+    scores_4 = (depth1_4 > 0) + (depth2_4 > 0)
+    scores.append(np.sum(scores_4 == 2))
+    print(scores)
 
     #
     # TODO
