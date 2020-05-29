@@ -29,7 +29,6 @@ if __name__ == '__main__':
     match_id = kpd.GetMatchFeaturesID(des1, des2)
     _x1, _x2 = kp1[match_id[:, 0]], kp2[match_id[:, 1]]
     kpd.DrawMatchKeypoints(img1, img2, _x1, _x2)
-
     # Transform @_x1 and @_x2 to normalized coordinate @x1 and @x2.
     #
     # Normalized coordinate: file coordinate -> [-1, 1] x [-1, 1]
@@ -79,6 +78,7 @@ if __name__ == '__main__':
     F = ransac_F.RANSAC(x1.T, x2.T)
     # de-normalize
     F = T2.T @ F @ T1
+    draw_epipolar_line(_x1, _x2, F)
     # for _ in range(n_iters):
         # Sample @n_samples points.
 
