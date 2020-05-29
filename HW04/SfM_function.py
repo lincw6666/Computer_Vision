@@ -40,11 +40,12 @@ def comput_epipolar_line_slope(pts, img_number, F):
 def draw_epipolar_line(img1, img2, _x1, _x2, F):
 	x1 = np.concatenate((_x1.T, np.ones((1, _x1.shape[0]))), axis=0)
 	x2 = np.concatenate((_x2.T, np.ones((1, _x2.shape[0]))), axis=0)
+	'''
 	N = 30 #random get N points
 	R = random.sample(range(1, x1.shape[1]), N)
 	x1 = x1[:, R]
 	x2 = x2[:, R]
-
+	'''
 	h ,w, d = img1.shape
 	for i in range(x1.shape[1]): 
 		color = tuple(np.random.randint(0, 255, 3).tolist())
