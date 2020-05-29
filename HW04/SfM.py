@@ -44,7 +44,6 @@ if __name__ == '__main__':
                    [                 0,                  0,  1]])
     x1 = T1 @ np.concatenate((_x1.T, np.ones((1, _x1.shape[0]))), axis=0) 
     x2 = T2 @ np.concatenate((_x2.T, np.ones((1, _x2.shape[0]))), axis=0)
-
     # Step 02: Find camera intrinsics.
     #
     # Find @K1 and @K2.
