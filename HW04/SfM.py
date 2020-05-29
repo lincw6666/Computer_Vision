@@ -160,7 +160,6 @@ if __name__ == '__main__':
     X3 = triangulation.triangulation(_x1.T, _x2.T, P1, P23)
     X4 = triangulation.triangulation(_x1.T, _x2.T, P1, P24)
 
-    print(P1.shape, X1.shape)
     x1_1 = P1.dot(X1.T)
     x2_1 = P21.dot(X1.T)
 
@@ -172,7 +171,7 @@ if __name__ == '__main__':
 
     x1_4 = P1.dot(X4.T)
     x2_4 = P24.dot(X4.T)  
-    
+
     scores = []
     depth1_1 = x1_1[2,:]
     depth2_1 = x2_1[2,:]
