@@ -22,3 +22,5 @@ def triangulation(x1, x2, P1, P2):
 	return np.asarray(points_3D)
 
 
+def draw_epipolar_line(img1, img2, _x1, _x2, F):
+	
