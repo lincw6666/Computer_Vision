@@ -55,6 +55,7 @@ def RANSAC(p1, p2):
     inlier_threshold = 1e-3
     best_Fundamental = None
     best_inlier_ratio = 0.0
+    best_inlier_idx = None
     for _ in range(n_iters):
         # Get sample pairs.
         rand_idx = random.sample(range(0, p1.shape[0]), n_samples)
@@ -64,13 +65,15 @@ def RANSAC(p1, p2):
         F = GetFundamental(tmp_p1.T, tmp_p2.T)
 
         # Compute x^T F x for all correspondences 
-        error = np.abs( np.diag(np.dot(p1,np.dot(F, p2.T))) )
+        error = ( np.diag(np.dot(p1,np.dot(F, p2.T))) ) ** 2
         # Use square error.
         # error = np.sqrt(np.sum((p1 - map_p2) ** 2, axis=1))
         # Calculate inlier ratio according to the threshold.
-        inlier_num = len(error[error < inlier_threshold])
+        inlier_idx = np.where(error < inlier_threshold)
+        inlier_num = len(inlier_idx[0])
         inlier_ratio = inlier_num / p1.shape[0]
         if inlier_ratio >= best_inlier_ratio:
             best_inlier_ratio = inlier_ratio
             best_Fundamental = F
-    return best_Fundamental
+            best_inlier_idx = inlier_idx
+    return best_Fundamental, best_inlier_idx

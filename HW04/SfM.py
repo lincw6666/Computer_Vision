@@ -51,6 +51,10 @@ if __name__ == '__main__':
         K1 = K2 = np.array([[1.4219, 0.0005, 0.5092],
                             [     0, 1.4219, 0.3802],
                             [     0,      0, 0.0010]])
+        K1 /= K1[2, 2]
+        K2 /= K2[2, 2]
+        K1_inv = np.linalg.inv(K1)
+        K2_inv = np.linalg.inv(K2)
     else:
         # TODO: Find camera intrinsics.
         print('Error!! No impelementation!!')
@@ -61,9 +65,11 @@ if __name__ == '__main__':
     # Using RANSAC to find the fundamental matrix
     ############################################################################
     # write above parameters ans below for loop in ransac_F.RANSAC 
-    F = ransac_F.RANSAC(x1.T, x2.T)
+    F, inlier_idx = ransac_F.RANSAC(x1.T, x2.T)
     # de-normalize
     F = T1.T @ F @ T2
+    _x1 = _x1[inlier_idx]
+    _x2 = _x2[inlier_idx]
     SfMF.draw_epipolar_line(img1, img2, _x1, _x2, F)
     ############################################################################
     # End RANSAC
@@ -76,35 +82,56 @@ if __name__ == '__main__':
     Z = np.asarray([[0, 1, 0], [-1, 0, 0], [0, 0, 0]])
     E = K1.T @ F @ K2
 
-    U, S, V = np.linalg.svd(E)
-
+    U, S, Vt = np.linalg.svd(E)
     m = (S[0] + S[1]) / 2
-    E = U @ np.array([[m, 0, 0], [0, m, 0], [0, 0, 0]]) @ V
-    U, S, V = np.linalg.svd(E)
+    E = U @ np.array([[m, 0, 0], [0, m, 0], [0, 0, 0]]) @ Vt
+    U, S, Vt = np.linalg.svd(E)
 
     #t = U[:, 2].reshape(-1, 1)
     Tx = U @ Z @ U.T
     t = np.asarray([Tx[2,1], Tx[0, 2], Tx[1, 0]]).reshape(-1, 1)
 
-    R1 = U @ W @ V.T
+    R1 = U @ W @ Vt
     R1 = R1 * np.sign(np.linalg.det(R1))
-    R2 = U @ W.T @ V.T
+    R2 = U @ W.T @ Vt
     R2 = R2 * np.sign(np.linalg.det(R2))    
 
     P1 = np.asarray([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0]])
     P2 = [np.hstack((R1, t)), np.hstack((R1, -t)), np.hstack((R2, t)),
           np.hstack((R2, -t))]
 
-    X = [SfMF.triangulation(_x1.T, _x2.T, P1, _P) for _P in P2]
+    x1_hat = K1_inv @ np.concatenate((_x1.T, np.ones((1, _x1.shape[0]))), axis=0)
+    x1_hat /= x1_hat[2]
+    x2_hat = K2_inv @ np.concatenate((_x2.T, np.ones((1, _x2.shape[0]))), axis=0) 
+    x2_hat /= x2_hat[2]
+    X = [SfMF.triangulation(x1_hat, x2_hat, _P, P1) for _P in P2]
 
-    x1 = [P1.dot(_X.T) for _X in X]
-    x2 = [P2[i].dot(X[i].T) for i in range(len(P2))]
+    # Choose @P2[i] which makes more points in front of the camera.
+    x1 = X
+    x2 = np.array([
+        (X[i][:, :3] + P2[i][:, :3]@P2[i][:, 3]) @ P2[i][2, :3].T
+        for i in range(len(P2))
+    ])
 
     scores = []
     for i in range(len(x1)):
-        depth1 = x1[i][2,:]
-        depth2 = x2[i][2,:]
+        depth1 = x1[i][:, 2]
+        depth2 = x2[i]
         score = (depth1 > 0).astype(np.uint8) + (depth2 > 0).astype(np.uint8)
         scores.append(np.sum(score == 2))
     print(scores)
-    P2 = P2[np.argmax(scores)]
+    correct_Rt_idx = np.argmax(scores)
+    X = X[correct_Rt_idx]
+
+    # Save data for matlab code.
+    np.savetxt('meta/3d_points.txt', X[:, :3])
+    np.savetxt('meta/2d_img_points.txt', _x2)
+    np.savetxt('meta/camera_matrix.txt', np.hstack((K2, P1)))
+
+    # Show 3D points.
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import axes3d, Axes3D
+    fig = plt.figure()
+    ax = Axes3D(fig)
+    ax.scatter3D(X[:, 1], X[:, 0], X[:, 2])
+    plt.show()
