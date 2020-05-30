@@ -52,7 +52,7 @@ def RANSAC(p1, p2):
     # Total @n_iters iterations.
     outlier_ratio = 0.05
     n_iters = int(np.log(1 - 0.99) / np.log(1 - (1-outlier_ratio)**n_samples))
-    inlier_threshold = 1e-7
+    inlier_threshold = 1e-3
     best_Fundamental = None
     best_inlier_ratio = 0.0
     for _ in range(n_iters):
@@ -64,7 +64,7 @@ def RANSAC(p1, p2):
         F = GetFundamental(tmp_p1.T, tmp_p2.T)
 
         # Compute x^T F x for all correspondences 
-        error = ( np.diag(np.dot(tmp_p1,np.dot(F,tmp_p2.T))) )**2 
+        error = np.abs( np.diag(np.dot(p1,np.dot(F, p2.T))) )
         # Use square error.
         # error = np.sqrt(np.sum((p1 - map_p2) ** 2, axis=1))
         # Calculate inlier ratio according to the threshold.

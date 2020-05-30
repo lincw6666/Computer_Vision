@@ -17,7 +17,7 @@ def triangulation(x1, x2, P1, P2):
 
 		U, S, V = np.linalg.svd(A)
 
-		X = V[:, -1]
+		X = V[-1]
 		points_3D.append(X/ X[3])
 
 	return np.asarray(points_3D)

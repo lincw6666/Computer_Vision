@@ -1,10 +1,10 @@
 # Standard packages.
 import cv2
 import numpy as np
-import ransac_F
 
 # My packages.
 import keypoint_detection as kpd
+import ransac_F
 import SfM_function as SfMF
 
 if __name__ == '__main__':
@@ -60,76 +60,11 @@ if __name__ == '__main__':
     ############################################################################
     # Using RANSAC to find the fundamental matrix
     ############################################################################
-
-    # RANSAC parameters.
-    #
-    # Sample @n_samples pairs in each iteration.
-    # n_samples = 8
-    # Total @n_iters iterations.
-    # outlier_ratio = 0.05
-    # n_iters = int(np.log(1 - 0.99) / np.log(1 - (1-outlier_ratio)**n_samples))
-
-    # inlier_threshold = 10.0 # It's not the correct value. Need to be modify.
-    # best_F = None
-    # best_inlier_ratio = 0.0
-    
     # write above parameters ans below for loop in ransac_F.RANSAC 
     F = ransac_F.RANSAC(x1.T, x2.T)
     # de-normalize
-    F = T2.T @ F @ T1
+    F = T1.T @ F @ T2
     SfMF.draw_epipolar_line(img1, img2, _x1, _x2, F)
-    # for _ in range(n_iters):
-        # Sample @n_samples points.
-
-        #
-        # TODO
-        #
-
-        # Step 03: Find fundamental matrix using 8 points algorithm. Please
-        # refer to p.46 in the slides for details.
-        #
-        # @F: @F = (K1^-T) @E (K2^-1) s.t. (x1^T) @F x2 = 0.
-        #   1. @F x2 => epipolar line associated with x1
-        #   2. (@F^T) x1 => epipolar line associated with x2
-        #   3. @F e2 = 0
-        #   4. (@F^T) e1 = 0
-        #   5. det(@F) = 0, @F has rank 2
-        
-        # Build equation Af = 0.
-        # ----->
-        # Please finish the above TODO first.
-        # <-----
-        # A = np.hstack(([sample_x1.T] * 3))
-        # A[:, :3] = A[:, :3] * sample_x2[0].T.unsqueeze(-1)
-        # A[:, 3:6] = A[:, 3:6] * sample_x2[1].T.unsqueeze(-1)
-
-        # 1. Find @f from the last right singular vector of @A.
-        # 2. Reshape @f to 3x3 to get @F.
-
-        # 
-        # TODO
-        #
-
-        # Resolve det(@F) = 0 constraint using SVD.
-        # F = USV^T, where S[3, 3] = 0.
-
-        # 
-        # TODO
-        #
-
-        # Draw epipolar line and correspondences on image.
-
-        #
-        # TODO
-        #
-
-        # Using RANSAC to deal with outliers (sample 8 points).
-        # => |x2 @F x1| < threshold
-
-        #
-        # TODO
-        #
-
     ############################################################################
     # End RANSAC
     ############################################################################
@@ -157,50 +92,19 @@ if __name__ == '__main__':
     R2 = R2 * np.sign(np.linalg.det(R2))    
 
     P1 = np.asarray([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0]])
-    P21 = np.hstack((R1, t))
-    P22 = np.hstack((R1, -t)) 
-    P23 = np.hstack((R2, t))
-    P24 = np.hstack((R2, -t))  
+    P2 = [np.hstack((R1, t)), np.hstack((R1, -t)), np.hstack((R2, t)),
+          np.hstack((R2, -t))]
 
-    X1 = SfMF.triangulation(_x1.T, _x2.T, P1, P21)
-    X2 = SfMF.triangulation(_x1.T, _x2.T, P1, P22)
-    X3 = SfMF.triangulation(_x1.T, _x2.T, P1, P23)
-    X4 = SfMF.triangulation(_x1.T, _x2.T, P1, P24)
+    X = [SfMF.triangulation(_x1.T, _x2.T, P1, _P) for _P in P2]
 
-    x1_1 = P1.dot(X1.T)
-    x2_1 = P21.dot(X1.T)
-
-    x1_2 = P1.dot(X2.T)
-    x2_2 = P22.dot(X2.T)
-
-    x1_3 = P1.dot(X3.T)
-    x2_3 = P23.dot(X3.T)
-
-    x1_4 = P1.dot(X4.T)
-    x2_4 = P24.dot(X4.T)  
+    x1 = [P1.dot(_X.T) for _X in X]
+    x2 = [P2[i].dot(X[i].T) for i in range(len(P2))]
 
     scores = []
-    depth1_1 = x1_1[2,:]
-    depth2_1 = x2_1[2,:]
-    scores_1 = (depth1_1 > 0) + (depth2_1 > 0)
-    scores.append(np.sum(scores_1 == 2))
-
-    depth1_2 = x1_2[2,:]
-    depth2_2 = x2_2[2,:]
-    scores_2 = (depth1_2 > 0) + (depth2_2 > 0)
-    scores.append(np.sum(scores_2 == 2))
-
-    depth1_3 = x1_3[2,:]
-    depth2_3 = x2_3[2,:]
-    scores_3 = (depth1_3 > 0) + (depth2_3 > 0)
-    scores.append(np.sum(scores_3 == 2))
-
-    depth1_4 = x1_3[2,:]
-    depth2_4 = x2_3[2,:]
-    scores_4 = (depth1_4 > 0) + (depth2_4 > 0)
-    scores.append(np.sum(scores_4 == 2))
+    for i in range(len(x1)):
+        depth1 = x1[i][2,:]
+        depth2 = x2[i][2,:]
+        score = (depth1 > 0).astype(np.uint8) + (depth2 > 0).astype(np.uint8)
+        scores.append(np.sum(score == 2))
     print(scores)
-
-    #
-    # TODO
-    #
+    P2 = P2[np.argmax(scores)]
