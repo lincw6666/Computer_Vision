@@ -19,8 +19,9 @@ if __name__ == '__main__':
     # @kpX: Keypoints.
     # @desX: Descriptor.
     img_name = 'Mesona'
-    img1 = cv2.imread(f'data/{img_name}1.JPG')
-    img2 = cv2.imread(f'data/{img_name}2.JPG')
+    img_format = 'JPG'
+    img1 = cv2.imread(f'data/{img_name}1.{img_format}')
+    img2 = cv2.imread(f'data/{img_name}2.{img_format}')
     kp1, des1 = kpd.SIFT(img1)
     kp2, des2 = kpd.SIFT(img2)
 
@@ -57,13 +58,21 @@ if __name__ == '__main__':
                             [     0,      0, 0.0010]])
         K1 /= K1[2, 2]
         K2 /= K2[2, 2]
-        K1_inv = np.linalg.inv(K1)
-        K2_inv = np.linalg.inv(K2)
+    elif img_name == 'Statue':
+        K1 = np.array([[5426.566895,    0.678017, 330.096680],
+                       [   0.000000, 5423.133301, 648.950012],
+                       [   0.000000,    0.000000,   1.000000]])
+        K2 = np.array([[5426.566895,    0.678017, 387.430023],
+                       [   0.000000, 5423.133301, 620.616699],
+                       [   0.000000,    0.000000,   1.000000]])
     else:
-        # TODO: Find camera intrinsics.
-        print('Error!! No impelementation!!')
-        import sys
-        sys.exit(0)
+        K1 = K2 = np.array([
+            [3.7007883955844718e3, 0.00000000000000000e0, 2.320072477236633404e3],
+            [0.0000000000000000e0, 3.69958207775816345e3, 1.263352114553649244e3],
+            [0.0000000000000000e0, 0.00000000000000000e0, 1.000000000000000000e0]
+        ])
+    K1_inv = np.linalg.inv(K1)
+    K2_inv = np.linalg.inv(K2)
 
     ############################################################################
     # Step 03: Using RANSAC to find the fundamental matrix
@@ -152,11 +161,18 @@ if __name__ == '__main__':
     # Choose the correct 3D points @X[i].
     correct_Rt_idx = np.argmax(scores)
     X = X[correct_Rt_idx]
+    P2 = P2[correct_Rt_idx]
 
     # Save data for matlab code.
     np.savetxt('meta/3d_points.txt', X[:, :3])
     np.savetxt('meta/2d_img_points.txt', _x1)
     np.savetxt('meta/camera_matrix.txt', np.hstack((K1, P1)))
+    # Save R and t.
+    if img_name == 'Statue':
+        np.savetxt('meta/statue_R1.txt', P1[:, :3])
+        np.savetxt('meta/statue_t1.txt', P1[:, 3])
+        np.savetxt('meta/statue_R2.txt', P2[:, :3])
+        np.savetxt('meta/statue_t2.txt', P2[:, 3])
 
     # Show 3D points.
     import matplotlib.pyplot as plt
