@@ -3,10 +3,12 @@ import numpy as np
 import random
 import math
 import copy
+import matplotlib.pyplot as plt
+import cv2
 
 import get_data_path
 
-def get_tiny_image(image_paths):
+def get_tiny_image(image_paths, norm = False):
 
 	height, width = 16, 16
 	tiny_images = np.zeros((len(image_paths), height * width))
@@ -15,8 +17,13 @@ def get_tiny_image(image_paths):
 
 		image = Image.open(path)
 		image_flatten = np.array(image.resize((width, height), Image.ANTIALIAS)).flatten()
-		image_nm = (image_flatten - np.mean(image_flatten))/np.std(image_flatten)
-		tiny_images[e, :] = image_nm
+		#image = cv2.imread(path, 0)
+		#image_flatten = cv2.resize(image, (width, height)).flatten()
+		if norm:
+			image_nm = (image_flatten - np.mean(image_flatten))/np.std(image_flatten)
+			tiny_images[e, :] = image_nm
+		else :
+			tiny_images[e, :] = image_flatten
 	
 	return tiny_images
 
@@ -88,6 +95,17 @@ def k_means(data, k):
 		if issame:
 			break
 	return center
+
+def plot_acc(accuracys, knns, labels, title = 'accuracy'):
+
+	plt.title(title)
+	plt.xlabel('epoch')
+	plt.ylabel('accuracy')
+	for acc, knn, label in zip(accuracys, knns, labels):
+		plt.plot(knn, acc, label = label)
+
+	plt.show()
+
 if __name__ == '__main__':
 
 	image_path = './hw5_data'
