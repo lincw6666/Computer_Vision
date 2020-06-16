@@ -106,6 +106,27 @@ def plot_acc(accuracys, knns, labels, title = 'accuracy'):
 
 	plt.show()
 
+def histogram(feature, center):
+    # class_feature = 15 * 100 * n * 128  or 15 * 10 * n * 128
+    # center = 128(k numbers) * 128(feature)
+    #  histogram = 15 * 100 * 128
+    k = center.shape[0]
+    image_num = feature[0].shape[0]
+    hist = np.zeros((15*image_num,128)).reshape((15,image_num,128))
+    for i in range(15):
+        for j in range(image_num):
+            for feature_num in range(feature[i][j].shape[0]):
+                mindist = 2e9
+                hist_index = -1
+                for n in range(k):
+                    distance = getdist(feature[i][j][feature_num], center[n])
+                    print(i, j, n)
+                    if distance < mindist:
+                        hist_index = n
+                        mindist = distance
+                hist[i][j][hist_index] += 1
+    return hist	
+
 if __name__ == '__main__':
 
 	image_path = './hw5_data'
