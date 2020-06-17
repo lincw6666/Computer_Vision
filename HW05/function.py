@@ -112,18 +112,11 @@ def histogram(feature, center):
     #  histogram = 15 * 100 * 128
     k = center.shape[0]
     image_num = feature[0].shape[0]
-    hist = np.zeros((15*image_num,128)).reshape((15,image_num,128))
+    hist = np.zeros((15*image_num,k)).reshape((15,image_num,k))
     for i in range(15):
         for j in range(image_num):
             for feature_num in range(feature[i][j].shape[0]):
-                mindist = 2e9
-                hist_index = -1
-                for n in range(k):
-                    distance = getdist(feature[i][j][feature_num], center[n])
-                    print(i, j, n)
-                    if distance < mindist:
-                        hist_index = n
-                        mindist = distance
+                hist_index = np.argmin(np.sqrt(np.sum(np.square(feature[i][j][feature_num] - center), 1)))
                 hist[i][j][hist_index] += 1
     return hist	
 
