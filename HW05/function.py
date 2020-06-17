@@ -112,7 +112,7 @@ def histogram(feature, center):
     #  histogram = 15 * 100 * 128
     k = center.shape[0]
     image_num = feature[0].shape[0]
-    hist = np.zeros((15*image_num,128)).reshape((15,image_num,128))
+    hist = np.zeros((15*image_num,k)).reshape((15,image_num,k))
     for i in range(15):
         for j in range(image_num):
             for feature_num in range(feature[i][j].shape[0]):
