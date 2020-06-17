@@ -99,11 +99,11 @@ def k_means(data, k):
 def plot_acc(accuracys, knns, labels, title = 'accuracy'):
 
 	plt.title(title)
-	plt.xlabel('epoch')
+	plt.xlabel('knn')
 	plt.ylabel('accuracy')
 	for acc, knn, label in zip(accuracys, knns, labels):
 		plt.plot(knn, acc, label = label)
-
+	plt.legend()
 	plt.show()
 
 def histogram(feature, center):
