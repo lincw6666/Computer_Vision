@@ -82,10 +82,7 @@ if __name__ == '__main__':
 	if os.path.isfile('vocabulary_128.npy'):
 		center = np.load('vocabulary_128.npy')
 	else :
-		# center = f.k_means(bag_of_features, k = 3)
-		kmeans = KMeans(n_clusters=256)
-		kmeans.fit(bag_of_features)
-		center = kmeans.cluster_centers_
+		center = f.k_means(bag_of_features, k = 128)
 		np.save('vocabulary.npy', center)
 
 
